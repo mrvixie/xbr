@@ -122,7 +122,6 @@ local RampUp = createSquareButton("RampUp", "▲", ButtonGrid)
 local RampDown = createSquareButton("RampDown", "▼", ButtonGrid)
 local Straight = createSquareButton("Straight", "➡", ButtonGrid)
 local Follow = createSquareButton("Follow", "⚖", ButtonGrid)
-local MCMode = createSquareButton("MCMode", "🧱", ButtonGrid)
 local Clear = createSquareButton("Clear", "🗑", ButtonGrid)
 
 -- Логика строительства
@@ -199,40 +198,6 @@ end)
 Clear.MouseButton1Click:Connect(function()
     for _, v in pairs(createdObjects) do v:Destroy() end
     createdObjects = {}
-end)
-
--- Логика Minecraft-строительства по сетке
-RunService.RenderStepped:Connect(function()
-    if not mcBuildEnabled or not player.Character then return end
-    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-    local hum = player.Character:FindFirstChild("Humanoid")
-    if not hrp or not hum then return end
-
-    local ray = Ray.new(hrp.Position, Vector3.new(0, -5, 0))
-    local hit = workspace:FindPartOnRay(ray, player.Character)
-    
-    if hit and table.find(createdObjects, hit) then
-        local look = hrp.CFrame.LookVector
-        local dirX = math.abs(look.X) > math.abs(look.Z) and math.sign(look.X) or 0
-        local dirZ = math.abs(look.Z) > math.abs(look.X) and math.sign(look.Z) or 0
-        
-        if dirX ~= 0 or dirZ ~= 0 then
-            local nextPos = hit.Position + Vector3.new(dirX * 10, 0, dirZ * 10)
-            
-            -- Если прыгаем - поднимаем платформу
-            if hum.Jump then
-                nextPos = nextPos + Vector3.new(0, 5, 0)
-            end
-            
-            -- Проверка, нет ли там уже платформы
-            local region = Region3.new(nextPos - Vector3.new(2,2,2), nextPos + Vector3.new(2,2,2))
-            local parts = workspace:FindPartsInRegion3(region, nil, 1)
-            
-            if #parts == 0 then
-                addPart(Vector3.new(10, 1, 10), CFrame.new(nextPos), Color3.fromRGB(150, 0, 0))
-            end
-        end
-    end
 end)
 
 -- Скрытие меню
