@@ -1,366 +1,255 @@
 local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
-local Mouse = Player:GetMouse()
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+
+-- Удаление старой версии, если есть
+local oldGui = game.CoreGui:FindFirstChild("VIX_Plate_Pro")
+if oldGui then oldGui:Destroy() end
 
 local ScreenGui = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local ButtonsFrame = Instance.new("Frame")
-local StairsFrame = Instance.new("Frame")
-local CloseButton = Instance.new("TextButton")
-local HideButton = Instance.new("TextButton")
-local Title = Instance.new("TextLabel")
-
--- Функция для удобного создания экземпляров
-local function CreateInstance(className, properties)
-    local instance = Instance.new(className)
-    for property, value in pairs(properties) do
-        instance[property] = value
-    end
-    return instance
-end
-
--- Glass look функция
-local function ApplyGlassEffect(frame)
-    frame.BackgroundTransparency = 0.5
-    frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    
-    local uiCorner = Instance.new("UICorner")
-    uiCorner.CornerRadius = UDim.new(0, 8)
-    uiCorner.Parent = frame
-    
-    local uiStroke = Instance.new("UIStroke")
-    uiStroke.Thickness = 1
-    uiStroke.Color = Color3.fromRGB(200, 200, 200)
-    uiStroke.Parent = frame
-    
-    return frame
-end
-
--- Создание кнопки
-local function CreateButton(parent, name, text, position, size)
-    local button = CreateInstance("TextButton", {
-        Parent = parent,
-        Name = name,
-        BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-        BorderSizePixel = 0,
-        Position = position,
-        Size = size,
-        Font = Enum.Font.SourceSans,
-        Text = text,
-        TextColor3 = Color3.White,
-        TextSize = 16,
-    })
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 4)
-    corner.Parent = button
-    
-    button.MouseEnter:Connect(function()
-        button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    end)
-    
-    button.MouseLeave:Connect(function()
-        button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    end)
-    
-    button.MouseButton1Click:Connect(function()
-        button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        wait(0.1)
-        button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    end)
-    
-    return button
-end
-
--- Основное окно
+ScreenGui.Name = "VIX_Plate_Pro"
 ScreenGui.Parent = game.CoreGui
-ScreenGui.Name = "VIX_Plate"
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Главный фрейм с стеклянным эффектом
-MainFrame = ApplyGlassEffect(CreateInstance("Frame", {
-    Parent = ScreenGui,
-    Position = UDim2.new(0.02, 0, 0.15, 0),
-    Size = UDim2.new(0, 300, 0, 450),
-    Draggable = true,
-    Active = true,
-    Selectable = true,
-}))
-
--- Верхняя панель с заголовком и кнопками
-local topBar = CreateInstance("Frame", {
-    Parent = MainFrame,
-    BackgroundTransparency = 1,
-    Position = UDim2.new(0, 0, 0, 0),
-    Size = UDim2.new(1, 0, 0, 35),
-})
-
--- Заголовок
-Title = CreateInstance("TextLabel", {
-    Parent = topBar,
-    BackgroundTransparency = 1,
-    Position = UDim2.new(0, 10, 0, 0),
-    Size = UDim2.new(0.6, -10, 1, 0),
-    Text = "VIX Plate",
-    TextColor3 = Color3.fromRGB(200, 200, 200),
-    TextXAlignment = Enum.TextXAlignment.Left,
-    Font = Enum.Font.SourceSansBold,
-    TextSize = 18,
-})
-
--- Кнопка скрытия
-HideButton = CreateButton(topBar, "Hide", "_", UDim2.new(0.75, 5, 0.1, 0), UDim2.new(0.1, 0, 0.8, 0))
-HideButton.TextColor3 = Color3.fromRGB(200, 200, 100)
-
--- Кнопка закрытия
-CloseButton = CreateButton(topBar, "Close", "X", UDim2.new(0.85, 5, 0.1, 0), UDim2.new(0.1, 0, 0.8, 0))
-CloseButton.TextColor3 = Color3.fromRGB(255, 100, 100)
-
--- Фрейм для основных кнопок
-ButtonsFrame = ApplyGlassEffect(CreateInstance("Frame", {
-    Parent = MainFrame,
-    Position = UDim2.new(0, 5, 0, 40),
-    Size = UDim2.new(1, -10, 0.6, -50),
-    BackgroundTransparency = 0.3,
-}))
-
--- Фрейм для кнопок лестниц
-StairsFrame = ApplyGlassEffect(CreateInstance("Frame", {
-    Parent = MainFrame,
-    Position = UDim2.new(0, 5, 0.6, 45),
-    Size = UDim2.new(1, -10, 0.35, -50),
-    BackgroundTransparency = 0.3,
-    Visible = true,
-}))
-
--- Создание кнопок
-local platformButton = CreateButton(ButtonsFrame, "Platform", "Платформа", UDim2.new(0.02, 0, 0.05, 0), UDim2.new(0.46, 0, 0.45, 0))
-local bigPlatformButton = CreateButton(ButtonsFrame, "BigPlatform", "Большая платформа", UDim2.new(0.52, 0, 0.05, 0), UDim2.new(0.46, 0, 0.45, 0))
-local clearButton = CreateButton(ButtonsFrame, "Clear", "Очистить", UDim2.new(0.02, 0, 0.55, 0), UDim2.new(0.96, 0, 0.4, 0))
-
-local upButton = CreateButton(StairsFrame, "Up", "Вверх ↗", UDim2.new(0.02, 0, 0.05, 0), UDim2.new(0.46, 0, 0.45, 0))
-local downButton = CreateButton(StairsFrame, "Down", "Вниз ↘", UDim2.new(0.52, 0, 0.05, 0), UDim2.new(0.46, 0, 0.45, 0))
-local forwardButton = CreateButton(StairsFrame, "Forward", "Прямо ➜", UDim2.new(0.27, 0, 0.55, 0), UDim2.new(0.46, 0, 0.4, 0))
-
 -- Переменные состояния
-local createdParts = {}
-local platform = nil
-local minecraftMode = false
-local function toggleMinecraftMode()
-    minecraftMode = not minecraftMode
-    if minecraftMode then
-        platformButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
-    else
-        platformButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        if platform then
-            platform:Destroy()
-            platform = nil
-        end
-    end
-end
-
-local function clearAll()
-    for _, part in ipairs(createdParts) do
-        if part then
-            part:Destroy()
-        end
-    end
-    createdParts = {}
-end
-
-local function createInclinedPath(direction, length, angle)
-    local character = Player.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    
-    local startCF = character.HumanoidRootPart.CFrame
-    local part = Instance.new("Part")
-    part.Anchored = true
-    part.CanCollide = true
-    part.Transparency = 0.7
-    part.Material = Enum.Material.Neon
-    part.BrickColor = BrickColor.new("Bright blue")
-    
-    local x, y, z = direction:components()
-    local sizeX = math.abs(x * length) + 5
-    local sizeY = 1
-    local sizeZ = math.abs(z * length) + 5
-    part.Size = Vector3.new(sizeX, sizeY, sizeZ)
-    
-    local height = y * length * math.sin(math.rad(45))
-    local offset = direction * length / 2
-    
-    part.CFrame = CFrame.new(startCF.Position + offset + Vector3.new(0, -2.5, 0) + Vector3.new(0, height/2, 0)) * 
-        CFrame.Angles(0, startCF:ToEulerAnglesXYZ().Y, 0) * 
-        CFrame.Angles(math.rad(angle), 0, 0) * 
-        CFrame.new(0, 0, 0)
-        
-    part.Parent = workspace
-    table.insert(createdParts, part)
-    
-    local selectionBox = Instance.new("SelectionBox", part)
-    selectionBox.Adornee = part
-    selectionBox.Color3 = Color3.fromRGB(0, 255, 255)
-    selectionBox.LineThickness = 0.05
-end
-
-local function createPlatform(size)
-    local character = Player.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    
-    local part = Instance.new("Part")
-    part.Size = Vector3.new(size, 1, size)
-    part.Position = (character.HumanoidRootPart.Position + Vector3.new(0, -3, 0))
-    part.Anchored = true
-    part.CanCollide = true
-    part.Transparency = 0.8
-    part.BrickColor = BrickColor.new("Bright green")
-    part.Material = Enum.Material.Neon
-    part.Parent = workspace
-    table.insert(createdParts, part)
-end
-
--- Функция для создания/удаления платформы
-local function togglePlatform()
-    if platform then
-        platform:Destroy()
-        platform = nil
-    else
-        if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-            platform = Instance.new("Part")
-            platform.Size = Vector3.new(15, 1, 15)
-            platform.Position = Player.Character.HumanoidRootPart.Position - Vector3.new(0, 3.5, 0)
-            platform.Anchored = true
-            platform.CanCollide = true
-            platform.Transparency = 0.7
-            platform.BrickColor = BrickColor.new("Bright red")
-            platform.Material = Enum.Material.Neon
-            platform.Parent = workspace
-            
-            local selectionBox = Instance.new("SelectionBox", platform)
-            selectionBox.Adornee = platform
-            selectionBox.Color3 = Color3.fromRGB(255, 0, 0)
-            selectionBox.LineThickness = 0.05
-            
-            -- Автообновление позиции платформы
-            game:GetService("RunService").Heartbeat:Connect(function()
-                if platform and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-                    local charPos = Player.Character.HumanoidRootPart.Position
-                    platform.CFrame = CFrame.new(charPos.x, platform.Position.y, charPos.z)
-                end
-            end)
-        end
-    end
-end
-
--- Minecraft-режим
+local isHidden = false
+local followPlatform = nil
+local mcBuildEnabled = false
 local lastPlatform = nil
-local function tryBuildPlatform()
-    if minecraftMode and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-        local character = Player.Character
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        local rootPart = character.HumanoidRootPart
+local createdObjects = {}
+
+-- Вспомогательные функции
+local function applyGlass(obj)
+    obj.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    obj.BackgroundTransparency = 0.4
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Transparency = 0.8
+    stroke.Thickness = 1
+    stroke.Parent = obj
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = obj
+end
+
+local function createSquareButton(name, text, parent)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Text = text
+    btn.Size = UDim2.new(0, 50, 0, 50)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.Parent = parent
+    applyGlass(btn)
+    
+    local aspect = Instance.new("UIAspectRatioConstraint")
+    aspect.AspectRatio = 1
+    aspect.Parent = btn
+    
+    return btn
+end
+
+-- Основной фрейм
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 400, 0, 70)
+MainFrame.Position = UDim2.new(0.5, -200, 0.8, 0)
+MainFrame.Parent = ScreenGui
+applyGlass(MainFrame)
+
+-- Контейнер для кнопок (Слева)
+local ButtonGrid = Instance.new("Frame")
+ButtonGrid.Size = UDim2.new(1, -60, 1, 0)
+ButtonGrid.BackgroundTransparency = 1
+ButtonGrid.Parent = MainFrame
+
+local layout = Instance.new("UIListLayout")
+layout.FillDirection = Enum.FillDirection.Horizontal
+layout.Padding = UDim.new(0, 10)
+layout.VerticalAlignment = Enum.VerticalAlignment.Center
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+layout.Parent = ButtonGrid
+
+-- Правая панель (Хэадер/Управление)
+local SideBar = Instance.new("Frame")
+SideBar.Size = UDim2.new(0, 60, 1, 0)
+SideBar.Position = UDim2.new(1, -60, 0, 0)
+SideBar.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+SideBar.BackgroundTransparency = 0.7
+SideBar.Parent = MainFrame
+local sideCorner = Instance.new("UICorner")
+sideCorner.CornerRadius = UDim.new(0, 8)
+sideCorner.Parent = SideBar
+
+-- Делаем SideBar перетаскиваемым (для телефонов)
+local dragging, dragInput, dragStart, startPos
+SideBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+-- Кнопки управления справа
+local CloseBtn = createSquareButton("Close", "X", SideBar)
+CloseBtn.Size = UDim2.new(0, 25, 0, 25)
+CloseBtn.Position = UDim2.new(0.5, -12, 0.1, 0)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+
+local HideBtn = createSquareButton("Hide", "<", SideBar)
+HideBtn.Size = UDim2.new(0, 25, 0, 25)
+HideBtn.Position = UDim2.new(0.5, -12, 0.6, 0)
+
+-- Функциональные кнопки
+local RampUp = createSquareButton("RampUp", "▲", ButtonGrid)
+local RampDown = createSquareButton("RampDown", "▼", ButtonGrid)
+local Straight = createSquareButton("Straight", "➡", ButtonGrid)
+local Follow = createSquareButton("Follow", "⚖", ButtonGrid)
+local MCMode = createSquareButton("MCMode", "🧱", ButtonGrid)
+local Clear = createSquareButton("Clear", "🗑", ButtonGrid)
+
+-- Логика строительства
+local function addPart(size, cframe, color)
+    local p = Instance.new("Part")
+    p.Size = size
+    p.CFrame = cframe
+    p.Anchored = true
+    p.Material = Enum.Material.Neon
+    p.Color = color or Color3.fromRGB(200, 0, 0)
+    p.Transparency = 0.5
+    p.Parent = workspace
+    
+    local stroke = Instance.new("SelectionBox")
+    stroke.Adornee = p
+    stroke.LineThickness = 0.05
+    stroke.Color3 = Color3.new(1,0,0)
+    stroke.Parent = p
+    
+    table.insert(createdObjects, p)
+    return p
+end
+
+RampUp.MouseButton1Click:Connect(function()
+    local hrp = player.Character.HumanoidRootPart
+    local cf = hrp.CFrame * CFrame.new(0, 10, -15) * CFrame.Angles(math.rad(45), 0, 0)
+    addPart(Vector3.new(10, 1, 42), cf)
+end)
+
+RampDown.MouseButton1Click:Connect(function()
+    local hrp = player.Character.HumanoidRootPart
+    local cf = hrp.CFrame * CFrame.new(0, -10, -15) * CFrame.Angles(math.rad(-45), 0, 0)
+    addPart(Vector3.new(10, 1, 42), cf)
+end)
+
+Straight.MouseButton1Click:Connect(function()
+    local hrp = player.Character.HumanoidRootPart
+    local cf = hrp.CFrame * CFrame.new(0, -3.5, -25)
+    addPart(Vector3.new(10, 1, 60), cf)
+end)
+
+Follow.MouseButton1Click:Connect(function()
+    if followPlatform then
+        followPlatform:Destroy()
+        followPlatform = nil
+        Follow.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    else
+        local hrp = player.Character:WaitForChild("HumanoidRootPart")
+        local initialY = hrp.Position.Y - 3.5
+        followPlatform = Instance.new("Part")
+        followPlatform.Size = Vector3.new(12, 1, 12)
+        followPlatform.Anchored = true
+        followPlatform.Material = Enum.Material.Glass
+        followPlatform.Color = Color3.new(1, 1, 1)
+        followPlatform.Transparency = 0.5
+        followPlatform.Parent = workspace
+        Follow.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         
-        if not humanoid then return end
+        task.spawn(function()
+            while followPlatform do
+                local pos = hrp.Position
+                followPlatform.CFrame = CFrame.new(pos.X, initialY, pos.Z)
+                task.wait()
+            end
+        end)
+    end
+end)
+
+MCMode.MouseButton1Click:Connect(function()
+    mcBuildEnabled = not mcBuildEnabled
+    MCMode.BackgroundColor3 = mcBuildEnabled and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(40, 40, 40)
+end)
+
+Clear.MouseButton1Click:Connect(function()
+    for _, v in pairs(createdObjects) do v:Destroy() end
+    createdObjects = {}
+end)
+
+-- Логика Minecraft-строительства по сетке
+RunService.RenderStepped:Connect(function()
+    if not mcBuildEnabled or not player.Character then return end
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    local hum = player.Character:FindFirstChild("Humanoid")
+    if not hrp or not hum then return end
+
+    local ray = Ray.new(hrp.Position, Vector3.new(0, -5, 0))
+    local hit = workspace:FindPartOnRay(ray, player.Character)
+    
+    if hit and table.find(createdObjects, hit) then
+        local look = hrp.CFrame.LookVector
+        local dirX = math.abs(look.X) > math.abs(look.Z) and math.sign(look.X) or 0
+        local dirZ = math.abs(look.Z) > math.abs(look.X) and math.sign(look.Z) or 0
         
-        -- Получаем направление взгляда игрока
-        local lookDirection = rootPart.CFrame.LookVector
-        local targetPosition = rootPart.Position + (lookDirection * 6)
-        
-        -- Проверяем падение игрока
-        local isJumping = humanoid:GetState() == Enum.HumanoidStateType.Jumping
-        local heightModifier = isJumping and 4 or 0
-        
-        -- Ищем существующую платформу под игроком
-        local ray = Ray.new(character.HumanoidRootPart.Position, Vector3.new(0, -10, 0))
-        local hit, position = workspace:FindPartOnRay(ray, character)
-        
-        local buildPosition
-        if hit then
-            -- Если под игроком есть платформа, строим на той же высоте
-            local currentHeight
-            if lastPlatform then
-                currentHeight = lastPlatform.Position.Y
-            else
-                currentHeight = math.floor(position.Y)
+        if dirX ~= 0 or dirZ ~= 0 then
+            local nextPos = hit.Position + Vector3.new(dirX * 10, 0, dirZ * 10)
+            
+            -- Если прыгаем - поднимаем платформу
+            if hum.Jump then
+                nextPos = nextPos + Vector3.new(0, 5, 0)
             end
             
-            buildPosition = Vector3.new(
-                math.floor(targetPosition.X / 4 + 0.5) * 4,
-                currentHeight + (isJumping and 4 or 0),
-                math.floor(targetPosition.Z / 4 + 0.5) * 4
-            )
-        else
-            -- Если нет платформы под ногами, просто строится на текущей высоте
-            buildPosition = Vector3.new(
-                math.floor(targetPosition.X / 4 + 0.5) * 4,
-                math.floor((rootPart.Position.Y - 3) / 4 + 0.5) * 4,
-                math.floor(targetPosition.Z / 4 + 0.5) * 4
-            )
+            -- Проверка, нет ли там уже платформы
+            local region = Region3.new(nextPos - Vector3.new(2,2,2), nextPos + Vector3.new(2,2,2))
+            local parts = workspace:FindPartsInRegion3(region, nil, 1)
+            
+            if #parts == 0 then
+                addPart(Vector3.new(10, 1, 10), CFrame.new(nextPos), Color3.fromRGB(150, 0, 0))
+            end
         end
-        
-        -- Создаем платформу
-        local newPlatform = Instance.new("Part")
-        newPlatform.Size = Vector3.new(4, 4, 4)
-        newPlatform.Position = buildPosition
-        newPlatform.Anchored = true
-        newPlatform.CanCollide = true
-        newPlatform.Transparency = 0.7
-        newPlatform.BrickColor = isJumping and BrickColor.new("Bright blue") or BrickColor.new("Bright green")
-        newPlatform.Material = Enum.Material.Neon
-        newPlatform.Parent = workspace
-        
-        lastPlatform = newPlatform
-        table.insert(createdParts, newPlatform)
-        
-        -- Добавляем подсветку краев
-        local selectionBox = Instance.new("SelectionBox", newPlatform)
-        selectionBox.Adornee = newPlatform
-        selectionBox.Color3 = isJumping and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(0, 255, 0)
-        selectionBox.LineThickness = 0.05
     end
-end
+end)
 
--- Обработчики кнопок
-HideButton.MouseButton1Click:Connect(function()
-    ButtonsFrame.Visible = not ButtonsFrame.Visible
-    StairsFrame.Visible = not StairsFrame.Visible
-    
-    if ButtonsFrame.Visible then
-        MainFrame.Size = UDim2.new(0, 300, 0, 450)
+-- Скрытие меню
+HideBtn.MouseButton1Click:Connect(function()
+    isHidden = not isHidden
+    if isHidden then
+        MainFrame:TweenSize(UDim2.new(0, 60, 0, 70), "Out", "Quad", 0.3, true)
+        ButtonGrid.Visible = false
+        HideBtn.Text = ">"
     else
-        MainFrame.Size = UDim2.new(0, 50, 0, 35)
+        MainFrame:TweenSize(UDim2.new(0, 400, 0, 70), "Out", "Quad", 0.3, true)
+        task.delay(0.2, function() ButtonGrid.Visible = true end)
+        HideBtn.Text = "<"
     end
 end)
 
-CloseButton.MouseButton1Click:Connect(function()
+CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
+    if followPlatform then followPlatform:Destroy() end
 end)
-
-platformButton.MouseButton1Click:Connect(toggleMinecraftMode)
-bigPlatformButton.MouseButton1Click:Connect(function() createPlatform(30) end)
-clearButton.MouseButton1Click:Connect(clearAll)
-
-upButton.MouseButton1Click:Connect(function() 
-    createInclinedPath(Vector3.new(0, 1, 0), 30, 45) 
-end)
-
-downButton.MouseButton1Click:Connect(function() 
-    createInclinedPath(Vector3.new(0, -1, 0), 30, -45) 
-end)
-
-forwardButton.MouseButton1Click:Connect(function() 
-    createInclinedPath(Vector3.new(0, 0, 1), 50, 0) 
-end)
-
-Players.LocalPlayer:GetMouse().Button1Down:Connect(function()
-    tryBuildPlatform()
-end)
-
--- Автофокус на игрока при постройке
-workspace.ChildAdded:Connect(function(child)
-    if table.find(createdParts, child) and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-        workspace.CurrentCamera.CameraSubject = Player.Character.HumanoidRootPart
-    end
-end)
-
-print("VIX Plate загружен успешно!")
