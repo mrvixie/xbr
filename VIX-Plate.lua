@@ -75,8 +75,8 @@ layout.Parent = ButtonGrid
 
 -- Правая панель (Хэадер/Управление)
 local SideBar = Instance.new("Frame")
-SideBar.Size = UDim2.new(0, 60, 1, 0)
-SideBar.Position = UDim2.new(1, -60, 0, 0)
+SideBar.Size = UDim2.new(0, 50, 1, 0)
+SideBar.Position = UDim2.new(1, -50, 0, 0)
 SideBar.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
 SideBar.BackgroundTransparency = 0.7
 SideBar.Parent = MainFrame
