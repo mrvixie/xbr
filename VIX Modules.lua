@@ -1,5 +1,8 @@
---[[ VIX Modules - Unified Mobile GUI ]]
--- Creator: VIXIE
+--[[
+    VIX Modules - Unified Mobile GUI
+    Creator: VIXIE
+    All modules combined with toggle system
+]]
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -9,22 +12,238 @@ local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 
--- ============== MAIN GUI CREATION ==============
+-- ==================== MAIN TOGGLE GUI ====================
 
 local MainGui = Instance.new("ScreenGui")
 MainGui.Name = "VIX Modules"
 MainGui.ResetOnSpawn = false
 MainGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-MainGui.Parent = player.PlayerGui
 
--- Blur Effect for Glass Look
-local BlurEffect = Instance.new("BlurEffect")
-BlurEffect.Size = 10
-BlurEffect.Name = "BlurEffect"
+local suc, err = pcall(function()
+    MainGui.Parent = player:WaitForChild("PlayerGui")
+end)
 
--- ============== HELPER FUNCTIONS ==============
+if not suc then
+    MainGui.Parent = game:GetService("CoreGui")
+end
 
-local function addUICorner(instance, radius)
+-- Toggle Button
+local ToggleBtn = Instance.new("ImageButton")
+ToggleBtn.Name = "ToggleBtn"
+ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+ToggleBtn.Position = UDim2.new(0.95, -25, 0.5, -25)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+ToggleBtn.Image = "rbxassetid://6031091004"
+ToggleBtn.ImageRectOffset = Vector3.new(464, 404)
+ToggleBtn.ScaleType = Enum.ScaleType.Fit
+ToggleBtn.Parent = MainGui
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0.5, 0)
+toggleCorner.Parent = ToggleBtn
+
+local toggleStroke = Instance.new("UIStroke")
+toggleStroke.Color = Color3.fromRGB(255, 100, 100)
+toggleStroke.Thickness = 2
+toggleStroke.Parent = ToggleBtn
+
+-- Main Container (сворачивается по ширине)
+local Container = Instance.new("Frame")
+Container.Name = "Container"
+Container.Size = UDim2.new(0, 200, 0, 0)
+Container.Position = UDim2.new(0.95, -200, 0.5, 0)
+Container.BackgroundColor3 = Color3.fromRGB(45, 0, 0)
+Container.BackgroundTransparency = 0.2
+Container.BorderSizePixel = 0
+Container.Parent = MainGui
+
+local containerCorner = Instance.new("UICorner")
+containerCorner.CornerRadius = UDim.new(0, 12)
+containerCorner.Parent = Container
+
+local containerStroke = Instance.new("UIStroke")
+containerStroke.Color = Color3.fromRGB(100, 30, 30)
+containerStroke.Thickness = 2
+containerStroke.Parent = Container
+
+-- Module Toggle Frame
+local ModuleToggleFrame = Instance.new("Frame")
+ModuleToggleFrame.Name = "ModuleToggles"
+ModuleToggleFrame.Size = UDim2.new(1, 0, 0, 0)
+ModuleToggleFrame.AutomaticSize = Enum.AutomaticSize.Y
+ModuleToggleFrame.BackgroundTransparency = 1
+ModuleToggleFrame.Parent = Container
+
+local toggleLayout = Instance.new("UIListLayout")
+toggleLayout.SortOrder = Enum.SortOrder.LayoutOrder
+toggleLayout.Padding = UDim.new(0, 5)
+toggleLayout.Parent = ModuleToggleFrame
+
+local togglePadding = Instance.new("UIPadding")
+togglePadding.PaddingTop = UDim.new(0, 10)
+togglePadding.PaddingBottom = UDim.new(0, 10)
+togglePadding.PaddingLeft = UDim.new(0, 10)
+togglePadding.PaddingRight = UDim.new(0, 10)
+togglePadding.Parent = ModuleToggleFrame
+
+-- Module states
+local moduleStates = {}
+local modulesContainer = {}
+local modulesVisible = true
+
+-- Create module toggle button
+local function createModuleToggle(name, order)
+    local toggle = Instance.new("Frame")
+    toggle.Name = name
+    toggle.Size = UDim2.new(1, 0, 0, 35)
+    toggle.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
+    toggle.BackgroundTransparency = 0.3
+    toggle.LayoutOrder = order
+    toggle.Parent = ModuleToggleFrame
+
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(0, 8)
+    toggleCorner.Parent = toggle
+
+    local statusDot = Instance.new("Frame")
+    statusDot.Name = "StatusDot"
+    statusDot.Size = UDim2.new(0, 12, 0, 12)
+    statusDot.Position = UDim2.new(0, 5, 0.5, -6)
+    statusDot.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+    statusDot.Parent = toggle
+
+    local dotCorner = Instance.new("UICorner")
+    dotCorner.CornerRadius = UDim.new(1, 0)
+    dotCorner.Parent = statusDot
+
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -50, 1, 0)
+    title.Position = UDim2.new(0, 25, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = name
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 12
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = toggle
+
+    local switchFrame = Instance.new("Frame")
+    switchFrame.Name = "SwitchFrame"
+    switchFrame.Size = UDim2.new(0, 40, 0, 22)
+    switchFrame.Position = UDim2.new(1, -45, 0.5, -11)
+    switchFrame.BackgroundColor3 = Color3.fromRGB(80, 0, 0)
+    switchFrame.Parent = toggle
+
+    local switchCorner = Instance.new("UICorner")
+    switchCorner.CornerRadius = UDim.new(0, 11)
+    switchCorner.Parent = switchFrame
+
+    local switchKnob = Instance.new("Frame")
+    switchKnob.Name = "Knob"
+    switchKnob.Size = UDim2.new(0, 18, 0, 18)
+    switchKnob.Position = UDim2.new(0, 2, 0.5, -9)
+    switchKnob.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    switchKnob.Parent = switchFrame
+
+    local knobCorner = Instance.new("UICorner")
+    knobCorner.CornerRadius = UDim.new(1, 0)
+    knobCorner.Parent = switchKnob
+
+    local enabled = true
+    moduleStates[name] = true
+
+    local function updateSwitch()
+        if enabled then
+            statusDot.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+            switchKnob.Position = UDim2.new(1, -20, 0.5, -9)
+            switchFrame.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        else
+            statusDot.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+            switchKnob.Position = UDim2.new(0, 2, 0.5, -9)
+            switchFrame.BackgroundColor3 = Color3.fromRGB(80, 0, 0)
+        end
+    end
+
+    switchFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            enabled = not enabled
+            moduleStates[name] = enabled
+            updateSwitch()
+            
+            local content = modulesContainer[name]
+            if content then
+                content.Visible = enabled
+            end
+        end
+    end)
+
+    updateSwitch()
+    return toggle, statusDot, title
+end
+
+-- Mobile drag for container
+local isDragging = false
+local dragStart = nil
+local startPos = nil
+
+Container.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+       input.UserInputType == Enum.UserInputType.Touch then
+        isDragging = true
+        dragStart = input.Position
+        startPos = Container.Position
+    end
+end)
+
+Container.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+       input.UserInputType == Enum.UserInputType.Touch then
+        isDragging = false
+    end
+end)
+
+Container.InputChanged:Connect(function(input)
+    if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or 
+                      input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        Container.Position = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale, 
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- Toggle button rotation
+local toggleRotation = 0
+ToggleBtn.MouseButton1Click:Connect(function()
+    modulesVisible = not modulesVisible
+    
+    spawn(function()
+        for i = 1, 10 do
+            toggleRotation = toggleRotation + ((modulesVisible and 0 or 180) - toggleRotation) * 0.3
+            ToggleBtn.Rotation = toggleRotation
+            wait(0.02)
+        end
+    end)
+    
+    if not modulesVisible then
+        Container:TweenSize(UDim2.new(0, 0, 0, 0), "Out", "Quad", 0.3, true)
+        ToggleBtn.Position = UDim2.new(0.5, -25, 0.5, -25)
+    else
+        Container:TweenSize(UDim2.new(0, 200, 0, 0), "Out", "Quad", 0.1, true)
+        wait(0.15)
+        Container:TweenSize(UDim2.new(0, 200, 0, 500), "Out", "Quad", 0.3, true)
+        ToggleBtn.Position = UDim2.new(0.95, -25, 0.5, -25)
+    end
+end)
+
+-- ==================== HELPER FUNCTIONS ====================
+
+local function addCorner(instance, radius)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = radius or UDim.new(0, 10)
     corner.Parent = instance
@@ -34,353 +253,213 @@ end
 local function addStroke(instance, color, thickness)
     local stroke = Instance.new("UIStroke")
     stroke.Color = color or Color3.fromRGB(255, 255, 255)
-    stroke.Thickness = thickness or 2
+    stroke.Thickness = thickness or 1
     stroke.Parent = instance
     return stroke
 end
 
-local function createGlassFrame(parent, size, pos, bgColor)
-    local frame = Instance.new("Frame")
-    frame.Size = size
-    frame.Position = pos
-    frame.BackgroundColor3 = bgColor or Color3.fromRGB(40, 40, 40)
-    frame.BackgroundTransparency = 0.3
-    frame.BorderSizePixel = 0
-    frame.Parent = parent
-    addUICorner(frame)
+local function makeGlass(frame)
+    frame.BackgroundColor3 = Color3.fromRGB(50, 10, 10)
+    frame.BackgroundTransparency = 0.4
     
     local gradient = Instance.new("UIGradient")
     gradient.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 200, 200))
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 180, 180))
     })
     gradient.Rotation = 45
     gradient.Parent = frame
-    
-    return frame
 end
 
-local function createDraggable(frame, isMobile)
-    local dragStart, startPos, dragging
-    
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragStart = input.Position
-            startPos = frame.Position
-            dragging = true
-            
-            local inputChanged = input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                    inputChanged:Disconnect()
-                end
-            end)
-        end
-    end)
-    
-    frame.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or 
-                        input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale, 
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale, 
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-end
+-- ==================== MODULE 1: VFLY ====================
 
--- ============== TOGGLE BUTTON (Main Show/Hide) ==============
+local VFlyToggle = createModuleToggle("VIX | VFly", 1)
 
-local ToggleButton = Instance.new("ImageButton")
-ToggleButton.Name = "ToggleButton"
-ToggleButton.Size = UDim2.new(0, 50, 0, 50)
-ToggleButton.Position = UDim2.new(0.95, -25, 0.5, -25)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-ToggleButton.Image = "rbxassetid://6031091004"
-ToggleButton.ImageRectOffset = Vector2.new(464, 404)
-ToggleButton.ImageRectSize = Vector2.new(36, 36)
-ToggleButton.ScaleType = Enum.ScaleType.Fit
-ToggleButton.Parent = MainGui
-addUICorner(ToggleButton, UDim.new(0.5, 0))
-addStroke(ToggleButton, Color3.fromRGB(255, 255, 255), 2)
+local VFlyGui = Instance.new("ScreenGui")
+VFlyGui.Name = "VFlyGui"
+VFlyGui.Parent = MainGui
 
-local modulesVisible = true
-local toggleRotation = 0
+local VFlyDrag = Instance.new("Frame")
+VFlyDrag.Name = "Drag"
+VFlyDrag.Size = UDim2.new(0, 130, 0, 32)
+VFlyDrag.Position = UDim2.new(0.48, 0, 0.45, 0)
+VFlyDrag.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+VFlyDrag.BackgroundTransparency = 0.3
+VFlyDrag.Active = true
+VFlyDrag.Parent = VFlyGui
+addCorner(VFlyDrag)
 
-ToggleButton.MouseButton1Click:Connect(function()
-    modulesVisible = not modulesVisible
-    
-    local targetRotation = modulesVisible and 0 or 180
-    
-    spawn(function()
-        for i = 1, 10 do
-            toggleRotation = toggleRotation + (targetRotation - toggleRotation) * 0.3
-            ToggleButton.Rotation = toggleRotation
-            wait(0.03)
-        end
-    end)
-    
-    if not modulesVisible then
-        AllModulesFrame:TweenSize(UDim2.new(0, 0, 0, 0), "Out", "Quad", 0.3, true)
-        ToggleButton.Position = UDim2.new(0.5, -25, 0.5, -25)
-    else
-        AllModulesFrame:TweenSize(UDim2.new(0, 200, 0, 0), "Out", "Quad", 0.3, true)
-        wait(0.1)
-        AllModulesFrame:TweenSize(UDim2.new(0, 200, 0, 500), "Out", "Quad", 0.3, true)
-        ToggleButton.Position = UDim2.new(0.95, -25, 0.5, -25)
-    end
-end)
+local VFlyFrame = Instance.new("Frame")
+VFlyFrame.Name = "FlyFrame"
+VFlyFrame.Size = UDim2.new(0, 130, 0, 90)
+VFlyFrame.Position = UDim2.new(-0.002, 0, 1.6, 0)
+VFlyFrame.BackgroundColor3 = Color3.fromRGB(125, 0, 0)
+VFlyFrame.BackgroundTransparency = 0.3
+VFlyFrame.Parent = VFlyDrag
+addCorner(VFlyFrame)
 
--- ============== MAIN MODULES FRAME ==============
+local VFlyLabel = Instance.new("TextLabel")
+VFlyLabel.Size = UDim2.new(0, 57, 0, 27)
+VFlyLabel.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+VFlyLabel.BackgroundTransparency = 0.3
+VFlyLabel.Text = "VIX | Vfly"
+VFlyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+VFlyLabel.TextScaled = true
+VFlyLabel.Parent = VFlyDrag
+addCorner(VFlyLabel)
 
-local AllModulesFrame = Instance.new("Frame")
-AllModulesFrame.Name = "AllModulesFrame"
-AllModulesFrame.Size = UDim2.new(0, 200, 0, 500)
-AllModulesFrame.Position = UDim2.new(0.95, -200, 0.5, -250)
-AllModulesFrame.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
-AllModulesFrame.BackgroundTransparency = 0.1
-AllModulesFrame.BorderSizePixel = 0
-AllModulesFrame.Parent = MainGui
-addUICorner(AllModulesFrame, UDim.new(0, 15))
-addStroke(AllModulesFrame, Color3.fromRGB(100, 50, 50), 2)
+local VFlyClose = Instance.new("TextButton")
+VFlyClose.Size = UDim2.new(0, 27, 0, 27)
+VFlyClose.Position = UDim2.new(0.78, 0, 0, 0)
+VFlyClose.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+VFlyClose.BackgroundTransparency = 0.3
+VFlyClose.Text = "X"
+VFlyClose.TextColor3 = Color3.fromRGB(255, 255, 255)
+VFlyClose.TextScaled = true
+VFlyClose.Parent = VFlyDrag
+addCorner(VFlyClose)
 
-local modulesScroll = Instance.new("ScrollingFrame")
-modulesScroll.Name = "ModulesScroll"
-modulesScroll.Size = UDim2.new(1, 0, 1, 0)
-modulesScroll.CanvasSize = UDim2.new(0, 0, 0, 1000)
-modulesScroll.ScrollBarThickness = 5
-modulesScroll.BackgroundTransparency = 1
-modulesScroll.BorderSizePixel = 0
-modulesScroll.Parent = AllModulesFrame
+local VFlyMini = Instance.new("TextButton")
+VFlyMini.Size = UDim2.new(0, 27, 0, 27)
+VFlyMini.Position = UDim2.new(0.55, 0, 0, 0)
+VFlyMini.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+VFlyMini.BackgroundTransparency = 0.3
+VFlyMini.Text = "-"
+VFlyMini.TextColor3 = Color3.fromRGB(255, 255, 255)
+VFlyMini.TextScaled = true
+VFlyMini.Parent = VFlyDrag
+addCorner(VFlyMini)
 
-local modulesLayout = Instance.new("UIListLayout")
-modulesLayout.SortOrder = Enum.SortOrder.LayoutOrder
-modulesLayout.Padding = UDim.new(0, 5)
-modulesLayout.Parent = modulesScroll
+local VFlySpeed = Instance.new("TextBox")
+VFlySpeed.Size = UDim2.new(1, -5, 0, 30)
+VFlySpeed.Position = UDim2.new(0, 2.5, 0, 5)
+VFlySpeed.BackgroundColor3 = Color3.fromRGB(163, 0, 0)
+VFlySpeed.BackgroundTransparency = 0.3
+VFlySpeed.Text = "300"
+VFlySpeed.TextColor3 = Color3.fromRGB(255, 255, 255)
+VFlySpeed.TextScaled = true
+VFlySpeed.Parent = VFlyFrame
+addCorner(VFlySpeed)
 
-local currentYOffset = 0
+local VFlyOn = Instance.new("TextButton")
+VFlyOn.Size = UDim2.new(1, -10, 0, 25)
+VFlyOn.Position = UDim2.new(0, 5, 0, 40)
+VFlyOn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+VFlyOn.BackgroundTransparency = 0.3
+VFlyOn.Text = "Fly ON"
+VFlyOn.TextColor3 = Color3.fromRGB(255, 255, 255)
+VFlyOn.TextScaled = true
+VFlyOn.Parent = VFlyFrame
+addCorner(VFlyOn)
 
-local function createModule(name, order)
-    local moduleFrame = Instance.new("Frame")
-    moduleFrame.Name = name
-    moduleFrame.Size = UDim2.new(1, -10, 0, 30)
-    moduleFrame.BackgroundColor3 = Color3.fromRGB(70, 0, 0)
-    moduleFrame.BackgroundTransparency = 0.2
-    moduleFrame.BorderSizePixel = 0
-    moduleFrame.LayoutOrder = order
-    moduleFrame.Parent = modulesScroll
-    addUICorner(moduleFrame, UDim.new(0, 8))
-    
-    local moduleToggle = Instance.new("TextButton")
-    moduleToggle.Name = "Toggle"
-    moduleToggle.Size = UDim2.new(0, 25, 0, 25)
-    moduleToggle.Position = UDim2.new(1, -30, 0, 2.5)
-    moduleToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-    moduleToggle.Text = "✓"
-    moduleToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    moduleToggle.Font = Enum.Font.GothamBold
-    moduleToggle.TextSize = 14
-    moduleToggle.Parent = moduleFrame
-    addUICorner(moduleToggle, UDim.new(0, 5))
-    
-    local moduleTitle = Instance.new("TextLabel")
-    moduleTitle.Name = "Title"
-    moduleTitle.Size = UDim2.new(1, -40, 1, 0)
-    moduleTitle.Position = UDim2.new(0, 5, 0, 0)
-    moduleTitle.BackgroundTransparency = 1
-    moduleTitle.Text = name
-    moduleTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    moduleTitle.Font = Enum.Font.GothamBold
-    moduleTitle.TextSize = 14
-    moduleTitle.TextXAlignment = Enum.TextXAlignment.Left
-    moduleTitle.Parent = moduleFrame
-    
-    local moduleContent = Instance.new("Frame")
-    moduleContent.Name = "Content"
-    moduleContent.Size = UDim2.new(1, -10, 0, 0)
-    moduleContent.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
-    moduleContent.BackgroundTransparency = 0.3
-    moduleContent.BorderSizePixel = 0
-    moduleContent.LayoutOrder = order + 0.5
-    moduleContent.Visible = false
-    moduleContent.Parent = modulesScroll
-    addUICorner(moduleContent, UDim.new(0, 8))
-    
-    local contentLayout = Instance.new("UIListLayout")
-    contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    contentLayout.Padding = UDim.new(0, 3)
-    contentLayout.Parent = moduleContent
-    
-    local enabled = true
-    moduleToggle.MouseButton1Click:Connect(function()
-        enabled = not enabled
-        moduleToggle.BackgroundColor3 = enabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(150, 0, 0)
-        moduleToggle.Text = enabled and "✓" or "✗"
-        
-        for _, child in pairs(moduleContent:GetChildren()) do
-            if child:IsA("Frame") or child:IsA("TextButton") or child:IsA("TextBox") then
-                child.Visible = enabled
-            end
-        end
-    end)
-    
-    moduleFrame.MouseButton1Click:Connect(function()
-        moduleContent.Visible = not moduleContent.Visible
-        
-        if moduleContent.Visible then
-            moduleContent:TweenSize(UDim2.new(1, -10, 0, 150), "Out", "Quad", 0.2, true)
-        else
-            moduleContent:TweenSize(UDim2.new(1, -10, 0, 0), "Out", "Quad", 0.2, true)
-        end
-    end)
-    
-    return moduleContent
-end
+local VFlyOff = Instance.new("TextButton")
+VFlyOff.Size = UDim2.new(1, -10, 0, 25)
+VFlyOff.Position = UDim2.new(0, 5, 0, 40)
+VFlyOff.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+VFlyOff.BackgroundTransparency = 0.3
+VFlyOff.Text = "Fly OFF"
+VFlyOff.TextColor3 = Color3.fromRGB(255, 255, 255)
+VFlyOff.TextScaled = true
+VFlyOff.Visible = false
+VFlyOff.Parent = VFlyFrame
+addCorner(VFlyOff)
 
--- ============== VFLY MODULE ==============
+local VFlyStatus = Instance.new("TextLabel")
+VFlyStatus.Size = UDim2.new(1, -10, 0, 15)
+VFlyStatus.Position = UDim2.new(0, 5, 0, 68)
+VFlyStatus.BackgroundTransparency = 1
+VFlyStatus.Text = "OFF"
+VFlyStatus.TextColor3 = Color3.fromRGB(255, 0, 0)
+VFlyStatus.TextScaled = true
+VFlyStatus.Parent = VFlyFrame
 
-local VFlyContent = createModule("VIX | VFly", 1)
+-- Fly controls frame
+local FlyControls = Instance.new("Frame")
+FlyControls.Name = "FlyControls"
+FlyControls.Size = UDim2.new(0, 130, 0, 90)
+FlyControls.Position = UDim2.new(0.12, 0, 0.55, 0)
+FlyControls.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
+FlyControls.BackgroundTransparency = 0.3
+FlyControls.Visible = false
+FlyControls.Parent = VFlyGui
+addCorner(FlyControls)
 
-local Flymguiv2 = Instance.new("ScreenGui")
-Flymguiv2.Name = "VFlyGui"
-Flymguiv2.Parent = player.PlayerGui
-Flymguiv2.ResetOnSpawn = false
+-- W button
+local VW = Instance.new("TextButton")
+VW.Size = UDim2.new(0.4, 0, 0.4, 0)
+VW.Position = UDim2.new(0.05, 0, 0.05, 0)
+VW.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+VW.Text = "^"
+VW.TextColor3 = Color3.fromRGB(255, 255, 255)
+VW.TextScaled = true
+VW.Parent = FlyControls
+addCorner(VW)
 
-local Drag = Instance.new("Frame")
-Drag.Name = "Drag"
-Drag.Size = UDim2.new(0, 130, 0, 32)
-Drag.Position = UDim2.new(0.48, 0, 0.45, 0)
-Drag.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-Drag.BackgroundTransparency = 0.3
-Drag.Active = true
-Drag.Parent = Flymguiv2
-createDraggable(Drag, true)
-addUICorner(Drag)
+-- S button
+local VS = Instance.new("TextButton")
+VS.Size = UDim2.new(0.4, 0, 0.4, 0)
+VS.Position = UDim2.new(0.05, 0, 0.55, 0)
+VS.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+VS.Text = "^"
+VS.TextColor3 = Color3.fromRGB(255, 255, 255)
+VS.TextScaled = true
+VS.Rotation = 180
+VS.Parent = FlyControls
+addCorner(VS)
 
-local FlyFrame = Instance.new("Frame")
-FlyFrame.Name = "FlyFrame"
-FlyFrame.Size = UDim2.new(0, 130, 0, 90)
-FlyFrame.Position = UDim2.new(-0.002, 0, 1.6, 0)
-FlyFrame.BackgroundColor3 = Color3.fromRGB(125, 0, 0)
-FlyFrame.BackgroundTransparency = 0.3
-FlyFrame.Parent = Drag
-addUICorner(FlyFrame)
+-- Loop button
+local VLoop = Instance.new("TextButton")
+VLoop.Size = UDim2.new(0.4, 0, 0.4, 0)
+VLoop.Position = UDim2.new(0.55, 0, 0.05, 0)
+VLoop.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+VLoop.Text = "LOOP"
+VLoop.TextColor3 = Color3.fromRGB(255, 255, 255)
+VLoop.TextScaled = true
+VLoop.Parent = FlyControls
+addCorner(VLoop)
 
-local VflyLabel = Instance.new("TextLabel")
-VflyLabel.Name = "VIX | Vfly"
-VflyLabel.Size = UDim2.new(0, 57, 0, 27)
-VflyLabel.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-VflyLabel.BackgroundTransparency = 0.3
-VflyLabel.Text = "VIX | Vfly"
-VflyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-VflyLabel.TextScaled = true
-VflyLabel.Parent = Drag
-addUICorner(VflyLabel)
+-- Boost button
+local VBoost = Instance.new("TextButton")
+VBoost.Size = UDim2.new(0.4, 0, 0.4, 0)
+VBoost.Position = UDim2.new(0.55, 0, 0.55, 0)
+VBoost.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+VBoost.Text = "BOOST"
+VBoost.TextColor3 = Color3.fromRGB(255, 255, 255)
+VBoost.TextScaled = true
+VBoost.Parent = FlyControls
+addCorner(VBoost)
 
-local Close = Instance.new("TextButton")
-Close.Name = "Close"
-Close.Size = UDim2.new(0, 27, 0, 27)
-Close.Position = UDim2.new(0.78, 0, 0, 0)
-Close.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-Close.BackgroundTransparency = 0.3
-Close.Text = "X"
-Close.TextColor3 = Color3.fromRGB(255, 255, 255)
-Close.TextScaled = true
-Close.Parent = Drag
-Close.MouseButton1Click:Connect(function()
-    Flymguiv2:Destroy()
-end)
-addUICorner(Close)
-
-local Minimize = Instance.new("TextButton")
-Minimize.Name = "Minimize"
-Minimize.Size = UDim2.new(0, 27, 0, 27)
-Minimize.Position = UDim2.new(0.55, 0, 0, 0)
-Minimize.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-Minimize.BackgroundTransparency = 0.3
-Minimize.Text = "-"
-Minimize.TextColor3 = Color3.fromRGB(255, 255, 255)
-Minimize.TextScaled = true
-Minimize.Parent = Drag
-addUICorner(Minimize)
-
-Minimize.MouseButton1Click:Connect(function()
-    if Minimize.Text == "-" then
-        Minimize.Text = "+"
-        FlyFrame.Visible = false
-    else
-        Minimize.Text = "-"
-        FlyFrame.Visible = true
-    end
-end)
-
-local Speed = Instance.new("TextBox")
-Speed.Name = "Speed"
-Speed.Size = UDim2.new(1, -5, 0, 30)
-Speed.Position = UDim2.new(0, 2.5, 0, 5)
-Speed.BackgroundColor3 = Color3.fromRGB(163, 0, 0)
-Speed.BackgroundTransparency = 0.3
-Speed.Text = "300"
-Speed.TextColor3 = Color3.fromRGB(255, 255, 255)
-Speed.TextScaled = true
-Speed.Parent = FlyFrame
-addUICorner(Speed)
-
-local Fly = Instance.new("TextButton")
-Fly.Name = "Fly"
-Fly.Size = UDim2.new(1, -10, 0, 25)
-Fly.Position = UDim2.new(0, 5, 0, 40)
-Fly.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-Fly.BackgroundTransparency = 0.3
-Fly.Text = "Fly ON"
-Fly.TextColor3 = Color3.fromRGB(255, 255, 255)
-Fly.TextScaled = true
-Fly.Parent = FlyFrame
-addUICorner(Fly)
-
-local Unfly = Instance.new("TextButton")
-Unfly.Name = "Unfly"
-Unfly.Size = UDim2.new(1, -10, 0, 25)
-Unfly.Position = UDim2.new(0, 5, 0, 40)
-Unfly.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-Unfly.BackgroundTransparency = 0.3
-Unfly.Text = "Fly OFF"
-Unfly.TextColor3 = Color3.fromRGB(255, 255, 255)
-Unfly.TextScaled = true
-Unfly.Visible = false
-Unfly.Parent = FlyFrame
-addUICorner(Unfly)
-
-local Stat2 = Instance.new("TextLabel")
-Stat2.Name = "Status"
-Stat2.Size = UDim2.new(1, -10, 0, 15)
-Stat2.Position = UDim2.new(0, 5, 0, 68)
-Stat2.BackgroundTransparency = 1
-Stat2.Text = "OFF"
-Stat2.TextColor3 = Color3.fromRGB(255, 0, 0)
-Stat2.TextScaled = true
-Stat2.Parent = FlyFrame
-
+-- VFly logic
 local isFlying = false
 local isLooping = false
-local currentLoopDirection = nil
 local loopConnection = nil
-local isBoostMode = false
+local currentLoopDir = nil
 
-Fly.MouseButton1Click:Connect(function()
+local function flyDirection(dir)
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and hrp:FindFirstChildOfClass("BodyVelocity") then
+        hrp.BodyVelocity.Velocity = workspace.CurrentCamera.CFrame.LookVector * dir * tonumber(VFlySpeed.Text)
+    end
+end
+
+local function stopFly()
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and hrp:FindFirstChildOfClass("BodyVelocity") then
+        hrp.BodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    end
+end
+
+VFlyOn.MouseButton1Click:Connect(function()
     if isFlying then return end
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
     isFlying = true
-    Fly.Visible = false
-    Unfly.Visible = true
-    Stat2.Text = "ON"
-    Stat2.TextColor3 = Color3.fromRGB(0, 255, 0)
+    VFlyOn.Visible = false
+    VFlyOff.Visible = true
+    VFlyStatus.Text = "ON"
+    VFlyStatus.TextColor3 = Color3.fromRGB(0, 255, 0)
+    FlyControls.Visible = true
     
     local BV = Instance.new("BodyVelocity")
     BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
@@ -393,18 +472,19 @@ Fly.MouseButton1Click:Connect(function()
     BG.Parent = hrp
     
     RunService.RenderStepped:Connect(function()
-        if BG and hrp then
+        if BG and hrp and hrp.Parent then
             BG.CFrame = workspace.CurrentCamera.CFrame
         end
     end)
 end)
 
-Unfly.MouseButton1Click:Connect(function()
+VFlyOff.MouseButton1Click:Connect(function()
     isFlying = false
-    Fly.Visible = true
-    Unfly.Visible = false
-    Stat2.Text = "OFF"
-    Stat2.TextColor3 = Color3.fromRGB(255, 0, 0)
+    VFlyOn.Visible = true
+    VFlyOff.Visible = false
+    VFlyStatus.Text = "OFF"
+    VFlyStatus.TextColor3 = Color3.fromRGB(255, 0, 0)
+    FlyControls.Visible = false
     
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
@@ -416,37 +496,159 @@ Unfly.MouseButton1Click:Connect(function()
     end
 end)
 
--- Add VFly to module
-local VFlyStatus = Instance.new("TextLabel")
-VFlyStatus.Name = "VFly Status"
-VFlyStatus.Size = UDim2.new(1, -10, 0, 20)
-VFlyStatus.BackgroundTransparency = 1
-VFlyStatus.Text = "VFLY Module: " .. (isFlying and "Active" or "Inactive")
-VFlyStatus.TextColor3 = Color3.fromRGB(255, 255, 255)
-VFlyStatus.TextScaled = true
-VFlyStatus.Parent = VFlyContent
-
-local VFlyOpen = Instance.new("TextButton")
-VFlyOpen.Name = "Open VFly"
-VFlyOpen.Size = UDim2.new(1, -10, 0, 30)
-VFlyOpen.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-VFlyOpen.BackgroundTransparency = 0.3
-VFlyOpen.Text = "Open VFly"
-VFlyOpen.TextColor3 = Color3.fromRGB(255, 255, 255)
-VFlyOpen.TextScaled = true
-VFlyOpen.Parent = VFlyContent
-addUICorner(VFlyOpen)
-VFlyOpen.MouseButton1Click:Connect(function()
-    Drag.Visible = true
+VW.MouseButton1Click:Connect(function()
+    currentLoopDir = 1
+    if isLooping then
+        if loopConnection then loopConnection:Disconnect() end
+        loopConnection = RunService.RenderStepped:Connect(function() flyDirection(1) end)
+    else
+        flyDirection(1)
+        wait(0.1)
+        stopFly()
+    end
 end)
 
--- ============== NOCLIP MODULE ==============
+VS.MouseButton1Click:Connect(function()
+    currentLoopDir = -1
+    if isLooping then
+        if loopConnection then loopConnection:Disconnect() end
+        loopConnection = RunService.RenderStepped:Connect(function() flyDirection(-1) end)
+    else
+        flyDirection(-1)
+        wait(0.1)
+        stopFly()
+    end
+end)
 
-local NoclipContent = createModule("VIX | Clips", 2)
+VLoop.MouseButton1Click:Connect(function()
+    isLooping = not isLooping
+    VLoop.BackgroundColor3 = isLooping and Color3.fromRGB(150, 150, 0) or Color3.fromRGB(150, 0, 0)
+end)
 
+VBoost.MouseButton1Click:Connect(function()
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and hrp:FindFirstChildOfClass("BodyVelocity") then
+        for i = 1, 20 do
+            hrp.BodyVelocity.Velocity = workspace.CurrentCamera.CFrame.LookVector * tonumber(VFlySpeed.Text) * 2
+            wait(0.02)
+        end
+        hrp.BodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    end
+end)
+
+VFlyMini.MouseButton1Click:Connect(function()
+    VFlyMini.Text = VFlyMini.Text == "-" and "+" or "-"
+    VFlyFrame.Visible = VFlyMini.Text == "-"
+end)
+
+VFlyClose.MouseButton1Click:Connect(function()
+    if isFlying then
+        VFlyOff.MouseButton1Click:Fire()
+    end
+    VFlyGui.Visible = false
+end)
+
+-- Store for toggle
+local VFlyContentFrame = Instance.new("Frame")
+VFlyContentFrame.Name = "VFlyContent"
+VFlyContentFrame.Size = UDim2.new(1, 0, 0, 40)
+VFlyContentFrame.BackgroundTransparency = 1
+VFlyContentFrame.Visible = moduleStates["VIX | VFly"]
+VFlyContentFrame.Parent = ModuleToggleFrame
+modulesContainer["VIX | VFly"] = VFlyContentFrame
+
+local VFlyOpenBtn = Instance.new("TextButton")
+VFlyOpenBtn.Size = UDim2.new(1, -10, 0, 30)
+VFlyOpenBtn.Position = UDim2.new(0, 5, 0, 5)
+VFlyOpenBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+VFlyOpenBtn.Text = "Open VFly"
+VFlyOpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+VFlyOpenBtn.TextScaled = true
+VFlyOpenBtn.Parent = VFlyContentFrame
+addCorner(VFlyOpenBtn)
+VFlyOpenBtn.MouseButton1Click:Connect(function()
+    VFlyGui.Visible = true
+end)
+
+-- ==================== MODULE 2: CLIPS (NOCLIP) ====================
+
+local ClipsToggle = createModuleToggle("VIX | Clips", 2)
+
+local ClipsGui = Instance.new("ScreenGui")
+ClipsGui.Name = "ClipsGui"
+ClipsGui.Parent = MainGui
+
+local ClipsFrame = Instance.new("Frame")
+ClipsFrame.Size = UDim2.new(0, 70, 0, 45)
+ClipsFrame.Position = UDim2.new(0.5, -50, 0.5, -75)
+ClipsFrame.BackgroundColor3 = Color3.fromRGB(45, 0, 0)
+ClipsFrame.BackgroundTransparency = 0.3
+ClipsFrame.Active = true
+ClipsFrame.Parent = ClipsGui
+addCorner(ClipsFrame)
+
+local ClipsTitle = Instance.new("TextLabel")
+ClipsTitle.Size = UDim2.new(1, 0, -0.1, 0)
+ClipsTitle.Position = UDim2.new(0, 0, -0.05, 0)
+ClipsTitle.BackgroundTransparency = 1
+ClipsTitle.Text = "VIX | Clips"
+ClipsTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClipsTitle.TextScaled = true
+ClipsTitle.Parent = ClipsFrame
+
+local NoclipBtn = Instance.new("TextButton")
+NoclipBtn.Size = UDim2.new(0.8, 0, 0.3, 0)
+NoclipBtn.Position = UDim2.new(0.1, 0, 0)
+NoclipBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 0)
+NoclipBtn.Text = "NoClip"
+NoclipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+NoclipBtn.TextWrapped = true
+NoclipBtn.Parent = ClipsFrame
+addCorner(NoclipBtn)
+
+local ReclipBtn = Instance.new("TextButton")
+ReclipBtn.Size = UDim2.new(0.8, 0, 0.3, 0)
+ReclipBtn.Position = UDim2.new(0.1, 0, 0.33)
+ReclipBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 0)
+ReclipBtn.Text = "ReClip"
+ReclipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ReclipBtn.TextWrapped = true
+ReclipBtn.Parent = ClipsFrame
+addCorner(ReclipBtn)
+
+local InvisBtn = Instance.new("TextButton")
+InvisBtn.Size = UDim2.new(0.8, 0, 0.3, 0)
+InvisBtn.Position = UDim2.new(0.1, 0, 0.66)
+InvisBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 0)
+InvisBtn.Text = "Invis"
+InvisBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+InvisBtn.TextWrapped = true
+InvisBtn.Parent = ClipsFrame
+addCorner(InvisBtn)
+
+local ClipsCloseBtn = Instance.new("TextButton")
+ClipsCloseBtn.Size = UDim2.new(0.2, 0, 0.2, 0)
+ClipsCloseBtn.Position = UDim2.new(0.8, 0, 0)
+ClipsCloseBtn.BackgroundColor3 = Color3.fromRGB(55, 0, 0)
+ClipsCloseBtn.Text = "X"
+ClipsCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClipsCloseBtn.TextWrapped = true
+ClipsCloseBtn.Parent = ClipsFrame
+addCorner(ClipsCloseBtn)
+
+local AutoToggleBtn = Instance.new("TextButton")
+AutoToggleBtn.Size = UDim2.new(0.2, 0, 0.5, 0)
+AutoToggleBtn.Position = UDim2.new(0.8, 0, 0.25)
+AutoToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 0)
+AutoToggleBtn.Text = "A"
+AutoToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoToggleBtn.Parent = ClipsFrame
+addCorner(AutoToggleBtn)
+
+-- Clips logic
 local noclip = false
-local autoNoclipEnabled = false
-local invincibilityToggled = false
+local autoNoclip = false
+local invisToggled = false
 
 local function setNoclip(state)
     noclip = state
@@ -459,404 +661,343 @@ local function setNoclip(state)
     end
 end
 
-local NoclipStatus = Instance.new("TextLabel")
-NoclipStatus.Size = UDim2.new(1, -10, 0, 20)
-NoclipStatus.BackgroundTransparency = 1
-NoclipStatus.Text = "NoClip: OFF"
-NoclipStatus.TextColor3 = Color3.fromRGB(255, 255, 255)
-NoclipStatus.TextScaled = true
-NoclipStatus.Parent = NoclipContent
-
-local NoclipOn = Instance.new("TextButton")
-NoclipOn.Size = UDim2.new(0.45, -3, 0, 35)
-NoclipOn.Position = UDim2.new(0, 5, 0, 25)
-NoclipOn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-NoclipOn.BackgroundTransparency = 0.3
-NoclipOn.Text = "NOCLIP"
-NoclipOn.TextColor3 = Color3.fromRGB(255, 255, 255)
-NoclipOn.TextScaled = true
-NoclipOn.Parent = NoclipContent
-addUICorner(NoclipOn)
-
-local NoclipOff = Instance.new("TextButton")
-NoclipOff.Size = UDim2.new(0.45, -3, 0, 35)
-NoclipOff.Position = UDim2.new(0.5, 0, 0, 25)
-NoclipOff.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-NoclipOff.BackgroundTransparency = 0.3
-NoclipOff.Text = "RECLIP"
-NoclipOff.TextColor3 = Color3.fromRGB(255, 255, 255)
-NoclipOff.TextScaled = true
-NoclipOff.Parent = NoclipContent
-addUICorner(NoclipOff)
-
-local AutoToggle = Instance.new("TextButton")
-AutoToggle.Size = UDim2.new(0.45, -3, 0, 30)
-AutoToggle.Position = UDim2.new(0, 5, 0, 65)
-AutoToggle.BackgroundColor3 = Color3.fromRGB(80, 80, 0)
-AutoToggle.BackgroundTransparency = 0.3
-AutoToggle.Text = "AUTO: OFF"
-AutoToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-AutoToggle.TextScaled = true
-AutoToggle.Parent = NoclipContent
-addUICorner(AutoToggle)
-
-local InvisToggle = Instance.new("TextButton")
-InvisToggle.Size = UDim2.new(0.45, -3, 0, 30)
-InvisToggle.Position = UDim2.new(0.5, 0, 0, 65)
-InvisToggle.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-InvisToggle.BackgroundTransparency = 0.3
-InvisToggle.Text = "INVIS"
-InvisToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-InvisToggle.TextScaled = true
-InvisToggle.Parent = NoclipContent
-addUICorner(InvisToggle)
-
-NoclipOn.MouseButton1Click:Connect(function()
+NoclipBtn.MouseButton1Click:Connect(function()
     setNoclip(true)
-    NoclipStatus.Text = "NoClip: ON"
-    NoclipStatus.TextColor3 = Color3.fromRGB(0, 255, 0)
 end)
 
-NoclipOff.MouseButton1Click:Connect(function()
+ReclipBtn.MouseButton1Click:Connect(function()
     setNoclip(false)
-    NoclipStatus.Text = "NoClip: OFF"
-    NoclipStatus.TextColor3 = Color3.fromRGB(255, 255, 255)
 end)
 
-AutoToggle.MouseButton1Click:Connect(function()
-    autoNoclipEnabled = not autoNoclipEnabled
-    AutoToggle.Text = "AUTO: " .. (autoNoclipEnabled and "ON" or "OFF")
-    AutoToggle.BackgroundColor3 = autoNoclipEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(80, 80, 0)
-end)
-
-InvisToggle.MouseButton1Click:Connect(function()
-    invincibilityToggled = not invincibilityToggled
+InvisBtn.MouseButton1Click:Connect(function()
+    invisToggled = not invisToggled
     local char = player.Character
     if char then
         for _, v in pairs(char:GetDescendants()) do
             if v:IsA("BasePart") then
-                v.CanTouch = not invincibilityToggled
+                v.CanTouch = not invisToggled
             end
         end
     end
-    InvisToggle.BackgroundColor3 = invincibilityToggled and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(100, 0, 0)
-    InvisToggle.Text = invincibilityToggled and "INVIS ON" or "INVIS"
+    InvisBtn.BackgroundColor3 = invisToggled and Color3.fromRGB(0, 75, 0) or Color3.fromRGB(75, 0, 0)
+end)
+
+AutoToggleBtn.MouseButton1Click:Connect(function()
+    autoNoclip = not autoNoclip
+    AutoToggleBtn.BackgroundColor3 = autoNoclip and Color3.fromRGB(0, 75, 0) or Color3.fromRGB(80, 80, 0)
+end)
+
+ClipsCloseBtn.MouseButton1Click:Connect(function()
+    ClipsGui.Visible = false
 end)
 
 spawn(function()
     while wait(1) do
-        if autoNoclipEnabled then
+        if autoNoclip then
             setNoclip(true)
         end
     end
 end)
 
 player.CharacterAdded:Connect(function(char)
-    if noclip or autoNoclipEnabled then
+    if noclip or autoNoclip then
         wait(0.5)
         setNoclip(true)
     end
 end)
 
--- ============== PLATE MODULE (Enhanced) ==============
+-- Store for toggle
+local ClipsContentFrame = Instance.new("Frame")
+ClipsContentFrame.Name = "ClipsContent"
+ClipsContentFrame.Size = UDim2.new(1, 0, 0, 40)
+ClipsContentFrame.BackgroundTransparency = 1
+ClipsContentFrame.Visible = moduleStates["VIX | Clips"]
+ClipsContentFrame.Parent = ModuleToggleFrame
+modulesContainer["VIX | Clips"] = ClipsContentFrame
 
-local PlateContent = createModule("VIX | Plate", 3)
+local ClipsOpenBtn = Instance.new("TextButton")
+ClipsOpenBtn.Size = UDim2.new(1, -10, 0, 30)
+ClipsOpenBtn.Position = UDim2.new(0, 5, 0, 5)
+ClipsOpenBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+ClipsOpenBtn.Text = "Open Clips"
+ClipsOpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClipsOpenBtn.TextScaled = true
+ClipsOpenBtn.Parent = ClipsContentFrame
+addCorner(ClipsOpenBtn)
+ClipsOpenBtn.MouseButton1Click:Connect(function()
+    ClipsGui.Visible = true
+end)
 
-local createdObjects = {}
+-- ==================== MODULE 3: PLATE ====================
 
-local function addRedBorder(part)
-    local topSurface = Instance.new("SurfaceGui", part)
-    topSurface.Face = Enum.NormalId.Top
-    local border = Instance.new("Frame", topSurface)
-    border.Size = UDim2.new(1, 0, 1, 0)
-    border.BackgroundTransparency = 1
-    local uiStroke = Instance.new("UIStroke", border)
-    uiStroke.Color = Color3.fromRGB(255, 0, 0)
-    uiStroke.Thickness = 4
-end
+local PlateToggle = createModuleToggle("VIX | Plate", 3)
 
-local PlateStatus = Instance.new("TextLabel")
-PlateStatus.Size = UDim2.new(1, -10, 0, 20)
-PlateStatus.BackgroundTransparency = 1
-PlateStatus.Text = "Create platforms and stairs"
-PlateStatus.TextColor3 = Color3.fromRGB(255, 255, 255)
-PlateStatus.TextScaled = true
-PlateStatus.Parent = PlateContent
+local PlateGui = Instance.new("ScreenGui")
+PlateGui.Name = "PlateGui"
+PlateGui.Parent = MainGui
 
-local PlateRow1 = Instance.new("Frame")
-PlateRow1.Size = UDim2.new(1, -10, 0, 30)
-PlateRow1.BackgroundTransparency = 1
-PlateRow1.Parent = PlateContent
+local PlateMainFrame = Instance.new("Frame")
+PlateMainFrame.Size = UDim2.new(0, 200, 0, 145)
+PlateMainFrame.Position = UDim2.new(0.1, 0, 0.1, 0)
+PlateMainFrame.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
+PlateMainFrame.BackgroundTransparency = 0.3
+PlateMainFrame.Active = true
+PlateMainFrame.Parent = PlateGui
+addCorner(PlateMainFrame)
 
-local PlateRow2 = Instance.new("Frame")
-PlateRow2.Size = UDim2.new(1, -10, 0, 30)
-PlateRow2.BackgroundTransparency = 1
-PlateRow2.Parent = PlateContent
+local PlateTopBar = Instance.new("Frame")
+PlateTopBar.Size = UDim2.new(1, 0, 0, 35)
+PlateTopBar.BackgroundColor3 = Color3.fromRGB(90, 0, 0)
+PlateTopBar.BackgroundTransparency = 0.3
+PlateTopBar.Parent = PlateMainFrame
+addCorner(PlateTopBar)
 
-local PlateRow3 = Instance.new("Frame")
-PlateRow3.Size = UDim2.new(1, -10, 0, 30)
-PlateRow3.BackgroundTransparency = 1
-PlateRow3.Parent = PlateContent
+local PlateTitle = Instance.new("TextLabel")
+PlateTitle.Size = UDim2.new(0.8, 0, 1, 0)
+PlateTitle.BackgroundTransparency = 1
+PlateTitle.Text = "VIX | Plate"
+PlateTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlateTitle.Font = Enum.Font.GothamBold
+PlateTitle.TextSize = 18
+PlateTitle.TextWrapped = true
+PlateTitle.Parent = PlateTopBar
 
-local function createPlateButton(parent, text, callback)
+local PlateHideBtn = Instance.new("TextButton")
+PlateHideBtn.Size = UDim2.new(0, 25, 0, 25)
+PlateHideBtn.Position = UDim2.new(0.8, 0, 0, 5)
+PlateHideBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
+PlateHideBtn.Text = "-"
+PlateHideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlateHideBtn.TextWrapped = true
+PlateHideBtn.Parent = PlateTopBar
+addCorner(PlateHideBtn)
+
+local PlateCloseBtn = Instance.new("TextButton")
+PlateCloseBtn.Size = UDim2.new(0, 25, 0, 25)
+PlateCloseBtn.Position = UDim2.new(0.9, 0, 0, 5)
+PlateCloseBtn.BackgroundColor3 = Color3.fromRGB(155, 0, 0)
+PlateCloseBtn.Text = "X"
+PlateCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlateCloseBtn.TextWrapped = true
+PlateCloseBtn.Parent = PlateTopBar
+addCorner(PlateCloseBtn)
+
+local PlateButtonsFrame = Instance.new("Frame")
+PlateButtonsFrame.Size = UDim2.new(1, 0, 0, 110)
+PlateButtonsFrame.Position = UDim2.new(0, 0, 0, 35)
+PlateButtonsFrame.BackgroundTransparency = 1
+PlateButtonsFrame.Parent = PlateMainFrame
+
+local plateBtnColor = Color3.fromRGB(175, 0, 0)
+local plateTextColor = Color3.fromRGB(255, 255, 255)
+
+local function createPlateBtn(text, pos, size, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.3, -2, 1, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    btn.Size = size
+    btn.Position = pos
+    btn.BackgroundColor3 = plateBtnColor
     btn.BackgroundTransparency = 0.3
     btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextScaled = true
-    btn.Parent = parent
-    addUICorner(btn)
+    btn.TextColor3 = plateTextColor
+    btn.TextWrapped = true
+    btn.Parent = PlateButtonsFrame
+    addCorner(btn)
     btn.MouseButton1Click:Connect(callback)
     return btn
 end
 
-createPlateButton(PlateRow1, "Up /", function()
+-- Row 1
+createPlateBtn("Up /", UDim2.new(0.05, 0, 0.1, 0), UDim2.new(0.425, 0, 0.2, 0), function()
     for i = 1, 50 do
-        local part = Instance.new("Part", workspace)
+        local part = Instance.new("Part")
         part.Size = Vector3.new(5, 0.5, 2)
-        part.CFrame = (player.Character.HumanoidRootPart.CFrame * CFrame.new(0, i * 0.5 - 3.5, -i * 0.5))
+        part.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(0, i * 0.5 - 3.5, -i * 0.5)
         part.Transparency = 0.8
         part.Anchored = true
         part.BrickColor = BrickColor.new("Bright red")
-        addRedBorder(part)
-        table.insert(createdObjects, part)
+        part.Parent = workspace
     end
 end)
 
-createPlateButton(PlateRow1, "Down \\", function()
+createPlateBtn("Down \\", UDim2.new(0.525, 0, 0.1, 0), UDim2.new(0.425, 0, 0.2, 0), function()
     for i = 1, 50 do
-        local part = Instance.new("Part", workspace)
+        local part = Instance.new("Part")
         part.Size = Vector3.new(5, 0.5, 2)
-        part.CFrame = (player.Character.HumanoidRootPart.CFrame * CFrame.new(0, -i * 0.5 - 3.5, -i * 0.5))
+        part.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(0, -i * 0.5 - 3.5, -i * 0.5)
         part.Transparency = 0.8
         part.Anchored = true
         part.BrickColor = BrickColor.new("Bright red")
-        addRedBorder(part)
-        table.insert(createdObjects, part)
+        part.Parent = workspace
     end
 end)
 
-createPlateButton(PlateRow1, "Small", function()
-    local part = Instance.new("Part", workspace)
+-- Row 2
+createPlateBtn("Small", UDim2.new(0.05, 0, 0.4, 0), UDim2.new(0.425, 0, 0.2, 0), function()
+    local part = Instance.new("Part")
     part.Size = Vector3.new(15, 1, 15)
     part.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(0, -3.5, 0)
     part.Transparency = 0.8
     part.Anchored = true
     part.BrickColor = BrickColor.new("Bright red")
-    addRedBorder(part)
-    table.insert(createdObjects, part)
+    part.Parent = workspace
 end)
 
-createPlateButton(PlateRow2, "Big", function()
-    local part = Instance.new("Part", workspace)
+createPlateBtn("Clear", UDim2.new(0.525, 0, 0.4, 0), UDim2.new(0.425, 0, 0.2, 0), function()
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj.Name == "VIXPlate" then
+            obj:Destroy()
+        end
+    end
+end)
+
+-- Row 3
+createPlateBtn("Big", UDim2.new(0.05, 0, 0.7, 0), UDim2.new(0.425, 0, 0.2, 0), function()
+    local part = Instance.new("Part")
     part.Size = Vector3.new(40, 1, 40)
     part.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(0, -3.5, 0)
     part.Transparency = 0.8
     part.Anchored = true
     part.BrickColor = BrickColor.new("Bright red")
-    addRedBorder(part)
-    table.insert(createdObjects, part)
+    part.Parent = workspace
 end)
 
-createPlateButton(PlateRow2, "H-Stairs", function()
+createPlateBtn("H-Stairs", UDim2.new(0.525, 0, 0.7, 0), UDim2.new(0.425, 0, 0.2, 0), function()
     for i = 1, 50 do
-        local part = Instance.new("Part", workspace)
+        local part = Instance.new("Part")
         part.Size = Vector3.new(5, 0.5, 2)
         part.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(i * 0.5 - 3.5, 0, -i * 0.5)
         part.Transparency = 0.8
         part.Anchored = true
         part.BrickColor = BrickColor.new("Bright red")
-        addRedBorder(part)
-        table.insert(createdObjects, part)
+        part.Parent = workspace
     end
 end)
 
-createPlateButton(PlateRow2, "V-Stairs", function()
-    for i = 1, 15 do
-        local part = Instance.new("Part", workspace)
-        part.Size = Vector3.new(5, 0.5, 5)
-        part.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(0, 2 - 3.5, 0)
-        part.Transparency = 0.8
-        part.Anchored = true
-        part.BrickColor = BrickColor.new("Bright red")
-        addRedBorder(part)
-        table.insert(createdObjects, part)
-        if i ~= 15 then
-            part.Size = Vector3.new(5, 5, 5)
-            delay(0.8, function()
-                if part then part:Destroy() end
-            end)
-        end
-        wait(0.4)
-    end
+PlateHideBtn.MouseButton1Click:Connect(function()
+    PlateHideBtn.Text = PlateHideBtn.Text == "-" and "+" or "-"
+    PlateButtonsFrame.Visible = PlateHideBtn.Text == "-"
+    PlateMainFrame.Size = PlateHideBtn.Text == "-" and UDim2.new(0, 200, 0, 145) or UDim2.new(0, 200, 0, 35)
 end)
 
--- NEW: Huge platforms + Boxes
-createPlateButton(PlateRow3, "Huge", function()
-    local part = Instance.new("Part", workspace)
-    part.Size = Vector3.new(100, 1, 100)
-    part.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(0, -3.5, 0)
-    part.Transparency = 0.8
-    part.Anchored = true
-    part.BrickColor = BrickColor.new("Bright red")
-    addRedBorder(part)
-    table.insert(createdObjects, part)
+PlateCloseBtn.MouseButton1Click:Connect(function()
+    PlateGui.Visible = false
 end)
 
-createPlateButton(PlateRow3, "Giant", function()
-    local part = Instance.new("Part", workspace)
-    part.Size = Vector3.new(300, 1, 300)
-    part.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(0, -3.5, 0)
-    part.Transparency = 0.8
-    part.Anchored = true
-    part.BrickColor = BrickColor.new("Bright red")
-    addRedBorder(part)
-    table.insert(createdObjects, part)
+-- Store for toggle
+local PlateContentFrame = Instance.new("Frame")
+PlateContentFrame.Name = "PlateContent"
+PlateContentFrame.Size = UDim2.new(1, 0, 0, 40)
+PlateContentFrame.BackgroundTransparency = 1
+PlateContentFrame.Visible = moduleStates["VIX | Plate"]
+PlateContentFrame.Parent = ModuleToggleFrame
+modulesContainer["VIX | Plate"] = PlateContentFrame
+
+local PlateOpenBtn = Instance.new("TextButton")
+PlateOpenBtn.Size = UDim2.new(1, -10, 0, 30)
+PlateOpenBtn.Position = UDim2.new(0, 5, 0, 5)
+PlateOpenBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+PlateOpenBtn.Text = "Open Plate"
+PlateOpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlateOpenBtn.TextScaled = true
+PlateOpenBtn.Parent = PlateContentFrame
+addCorner(PlateOpenBtn)
+PlateOpenBtn.MouseButton1Click:Connect(function()
+    PlateGui.Visible = true
 end)
 
-createPlateButton(PlateRow3, "Clear", function()
-    for _, obj in ipairs(createdObjects) do
-        if obj then obj:Destroy() end
-    end
-    createdObjects = {}
-end)
+-- ==================== MODULE 4: RECTP ====================
 
--- NEW: Box creation system
-local BoxRow = Instance.new("Frame")
-BoxRow.Size = UDim2.new(1, -10, 0, 30)
-BoxRow.BackgroundTransparency = 1
-BoxRow.Parent = PlateContent
+local RecTPToggle = createModuleToggle("VIX | RecTP", 4)
 
-createPlateButton(BoxRow, "Box S", function()
-    local hrp = player.Character.HumanoidRootPart
-    local size = 100
-    
-    local function createBoxPart(pos, sizeVec)
-        local part = Instance.new("Part", workspace)
-        part.Size = sizeVec
-        part.CFrame = hrp.CFrame * CFrame.new(pos)
-        part.Transparency = 0.7
-        part.Anchored = true
-        part.BrickColor = BrickColor.new("Bright red")
-        addRedBorder(part)
-        table.insert(createdObjects, part)
-        return part
-    end
-    
-    -- Floor
-    createBoxPart(Vector3.new(0, -size/2 - 0.5, 0), Vector3.new(size, 1, size))
-    -- Ceiling
-    createBoxPart(Vector3.new(0, size/2 + 0.5, 0), Vector3.new(size, 1, size))
-    -- Walls
-    createBoxPart(Vector3.new(0, 0, size/2 + 0.5), Vector3.new(size, size, 1))
-    createBoxPart(Vector3.new(0, 0, -size/2 - 0.5), Vector3.new(size, size, 1))
-    createBoxPart(Vector3.new(size/2 + 0.5, 0, 0), Vector3.new(1, size, size))
-    createBoxPart(Vector3.new(-size/2 - 0.5, 0, 0), Vector3.new(1, size, size))
-end)
+local RecTPGui = Instance.new("ScreenGui")
+RecTPGui.Name = "RecTPGui"
+RecTPGui.Parent = MainGui
 
-createPlateButton(BoxRow, "Box M", function()
-    local hrp = player.Character.HumanoidRootPart
-    local size = 300
-    
-    local function createBoxPart(pos, sizeVec)
-        local part = Instance.new("Part", workspace)
-        part.Size = sizeVec
-        part.CFrame = hrp.CFrame * CFrame.new(pos)
-        part.Transparency = 0.7
-        part.Anchored = true
-        part.BrickColor = BrickColor.new("Bright red")
-        addRedBorder(part)
-        table.insert(createdObjects, part)
-        return part
-    end
-    
-    createBoxPart(Vector3.new(0, -size/2 - 0.5, 0), Vector3.new(size, 1, size))
-    createBoxPart(Vector3.new(0, size/2 + 0.5, 0), Vector3.new(size, 1, size))
-    createBoxPart(Vector3.new(0, 0, size/2 + 0.5), Vector3.new(size, size, 1))
-    createBoxPart(Vector3.new(0, 0, -size/2 - 0.5), Vector3.new(size, size, 1))
-    createBoxPart(Vector3.new(size/2 + 0.5, 0, 0), Vector3.new(1, size, size))
-    createBoxPart(Vector3.new(-size/2 - 0.5, 0, 0), Vector3.new(1, size, size))
-end)
+local RecTPFrame = Instance.new("Frame")
+RecTPFrame.Size = UDim2.new(0, 150, 0, 140)
+RecTPFrame.Position = UDim2.new(0, 5, 0, 5)
+RecTPFrame.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+RecTPFrame.BackgroundTransparency = 0.3
+RecTPFrame.Active = true
+RecTPFrame.Parent = RecTPGui
+addCorner(RecTPFrame)
 
-createPlateButton(BoxRow, "Box L", function()
-    local hrp = player.Character.HumanoidRootPart
-    local size = 3000
-    
-    local function createBoxPart(pos, sizeVec)
-        local part = Instance.new("Part", workspace)
-        part.Size = sizeVec
-        part.CFrame = hrp.CFrame * CFrame.new(pos)
-        part.Transparency = 0.7
-        part.Anchored = true
-        part.BrickColor = BrickColor.new("Bright red")
-        addRedBorder(part)
-        table.insert(createdObjects, part)
-        return part
-    end
-    
-    createBoxPart(Vector3.new(0, -size/2 - 0.5, 0), Vector3.new(size, 1, size))
-    createBoxPart(Vector3.new(0, size/2 + 0.5, 0), Vector3.new(size, 1, size))
-    createBoxPart(Vector3.new(0, 0, size/2 + 0.5), Vector3.new(size, size, 1))
-    createBoxPart(Vector3.new(0, 0, -size/2 - 0.5), Vector3.new(size, size, 1))
-    createBoxPart(Vector3.new(size/2 + 0.5, 0, 0), Vector3.new(1, size, size))
-    createBoxPart(Vector3.new(-size/2 - 0.5, 0, 0), Vector3.new(1, size, size))
-end)
+local RecTPTopBar = Instance.new("Frame")
+RecTPTopBar.Size = UDim2.new(1, 0, 0, 30)
+RecTPTopBar.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
+RecTPTopBar.BackgroundTransparency = 0.3
+RecTPTopBar.Parent = RecTPFrame
+addCorner(RecTPTopBar)
 
--- ============== RECTP MODULE ==============
+local RecTPTitle = Instance.new("TextLabel")
+RecTPTitle.Size = UDim2.new(1, -70, 1, 0)
+RecTPTitle.Position = UDim2.new(0, 5, 0, 0)
+RecTPTitle.BackgroundTransparency = 1
+RecTPTitle.Text = "VIX | RecTP"
+RecTPTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+RecTPTitle.TextSize = 9
+RecTPTitle.Parent = RecTPTopBar
 
-local RecTPContent = createModule("VIX | RecTP", 4)
+local RecTPCloseBtn = Instance.new("TextButton")
+RecTPCloseBtn.Size = UDim2.new(0, 25, 0, 25)
+RecTPCloseBtn.Position = UDim2.new(1, -30, 0, 2.5)
+RecTPCloseBtn.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
+RecTPCloseBtn.Text = "X"
+RecTPCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RecTPCloseBtn.Parent = RecTPTopBar
+addCorner(RecTPCloseBtn)
 
-local isRecording = false
-local points = {}
-local teleportDelay = 1
-local autoTeleport = false
-local cycleEnabled = false
+local RecTPHideBtn = Instance.new("TextButton")
+RecTPHideBtn.Size = UDim2.new(0, 25, 0, 25)
+RecTPHideBtn.Position = UDim2.new(1, -58, 0, 2.5)
+RecTPHideBtn.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
+RecTPHideBtn.Text = "-"
+RecTPHideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RecTPHideBtn.Parent = RecTPTopBar
+addCorner(RecTPHideBtn)
 
-local RecTPStatus = Instance.new("TextLabel")
-RecTPStatus.Size = UDim2.new(1, -10, 0, 20)
-RecTPStatus.BackgroundTransparency = 1
-RecTPStatus.Text = "Record & Teleport"
-RecTPStatus.TextColor3 = Color3.fromRGB(255, 255, 255)
-RecTPStatus.TextScaled = true
-RecTPStatus.Parent = RecTPContent
-
-local RecTPRow1 = Instance.new("Frame")
-RecTPRow1.Size = UDim2.new(1, -10, 0, 30)
-RecTPRow1.BackgroundTransparency = 1
-RecTPRow1.Parent = RecTPContent
-
-local RecTPRow2 = Instance.new("Frame")
-RecTPRow2.Size = UDim2.new(1, -10, 0, 30)
-RecTPRow2.BackgroundTransparency = 1
-RecTPRow2.Parent = RecTPContent
-
-local function createRecTPButton(parent, text, callback, bgColor)
+local function createRecTPBtn(text, pos, size, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.3, -2, 1, 0)
-    btn.BackgroundColor3 = bgColor or Color3.fromRGB(150, 0, 0)
+    btn.Size = size
+    btn.Position = pos
+    btn.BackgroundColor3 = Color3.fromRGB(70, 0, 0)
     btn.BackgroundTransparency = 0.3
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.TextScaled = true
-    btn.Parent = parent
-    addUICorner(btn)
+    btn.Parent = RecTPFrame
+    addCorner(btn)
     btn.MouseButton1Click:Connect(callback)
     return btn
 end
 
-local RecordBtn = nil
-createRecTPButton(RecTPRow1, "Rec", function()
-    isRecording = not isRecording
-    RecordBtn = RecTPRow1:FindFirstChild("Rec")
-    if RecordBtn then
-        RecordBtn.Text = isRecording and "Stop" or "Rec"
-        RecordBtn.BackgroundColor3 = isRecording and Color3.fromRGB(255, 150, 0) or Color3.fromRGB(150, 0, 0)
+-- Row 1
+createRecTPBtn("▶", UDim2.new(0, 5, 0, 35), UDim2.new(0, 30, 0, 30), function()
+    autoTeleport = true
+    for _, point in ipairs(points) do
+        if autoTeleport and player.Character then
+            player.Character:SetPrimaryPartCFrame(CFrame.new(point))
+            wait(teleportDelay)
+        end
     end
 end)
 
-createRecTPButton(RecTPRow1, "+", function()
+createRecTPBtn("||", UDim2.new(0, 40, 0, 35), UDim2.new(0, 30, 0, 30), function()
+    autoTeleport = false
+end)
+
+createRecTPBtn("▶||", UDim2.new(0, 75, 0, 35), UDim2.new(0, 30, 0, 30), function()
+    autoTeleport = true
+end)
+
+-- Row 2
+local RecordBtn = createRecTPBtn("Rec", UDim2.new(0, 5, 0, 70), UDim2.new(0, 70, 0, 30), function()
+    isRecording = not isRecording
+    RecordBtn.Text = isRecording and "Stop" or "Rec"
+    RecordBtn.BackgroundColor3 = isRecording and Color3.fromRGB(255, 150, 0) or Color3.fromRGB(70, 0, 0)
+end)
+
+createRecTPBtn("+", UDim2.new(0, 80, 0, 70), UDim2.new(0, 30, 0, 30), function()
     if isRecording then
         local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
         if hrp then
@@ -865,67 +1006,31 @@ createRecTPButton(RecTPRow1, "+", function()
     end
 end)
 
-createRecTPButton(RecTPRow1, "-", function()
+createRecTPBtn("–", UDim2.new(0, 115, 0, 70), UDim2.new(0, 30, 0, 30), function()
     table.remove(points)
 end)
 
-createRecTPButton(RecTPRow2, "Play", function()
-    autoTeleport = true
-    for _, point in ipairs(points) do
-        if autoTeleport and player.Character then
-            player.Character:SetPrimaryPartCFrame(CFrame.new(point))
-            wait(teleportDelay)
-        end
-    end
-    if cycleEnabled then
-        spawn(function()
-            while cycleEnabled and autoTeleport do
-                wait(1)
-                for _, point in ipairs(points) do
-                    if autoTeleport and player.Character then
-                        player.Character:SetPrimaryPartCFrame(CFrame.new(point))
-                        wait(teleportDelay)
-                    end
-                end
-            end
-        end)
-    end
-end)
-
-createRecTPButton(RecTPRow2, "Stop", function()
-    autoTeleport = false
-end)
-
-createRecTPButton(RecTPRow2, "Loop", function()
+-- Row 3
+createRecTPBtn("Loop", UDim2.new(0, 80, 0, 105), UDim2.new(0, 30, 0, 30), function()
     cycleEnabled = not cycleEnabled
 end)
 
 local DelayInput = Instance.new("TextBox")
-DelayInput.Size = UDim2.new(1, -10, 0, 25)
-DelayInput.Position = UDim2.new(0, 5, 0, 65)
-DelayInput.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
+DelayInput.Size = UDim2.new(0, 30, 0, 30)
+DelayInput.Position = UDim2.new(0, 115, 0, 105)
+DelayInput.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
 DelayInput.BackgroundTransparency = 0.3
 DelayInput.Text = "1"
 DelayInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 DelayInput.TextScaled = true
-DelayInput.Parent = RecTPContent
-addUICorner(DelayInput)
+DelayInput.Parent = RecTPFrame
+addCorner(DelayInput)
 DelayInput.FocusLost:Connect(function()
     local val = tonumber(DelayInput.Text)
     if val then teleportDelay = val end
 end)
 
-local RandTeleportBtn = Instance.new("TextButton")
-RandTeleportBtn.Size = UDim2.new(1, -10, 0, 30)
-RandTeleportBtn.Position = UDim2.new(0, 5, 0, 95)
-RandTeleportBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-RandTeleportBtn.BackgroundTransparency = 0.3
-RandTeleportBtn.Text = "Random TP"
-RandTeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-RandTeleportBtn.TextScaled = true
-RandTeleportBtn.Parent = RecTPContent
-addUICorner(RandTeleportBtn)
-RandTeleportBtn.MouseButton1Click:Connect(function()
+createRecTPBtn("→👤", UDim2.new(0, 5, 0, 105), UDim2.new(0, 40, 0, 30), function()
     local players = Players:GetPlayers()
     if #players > 1 then
         local randomPlayer
@@ -939,10 +1044,122 @@ RandTeleportBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ============== SPEEDS MODULE ==============
+-- RecTP variables
+local isRecording = false
+local points = {}
+local teleportDelay = 1
+local autoTeleport = false
+local cycleEnabled = false
 
-local SpeedsContent = createModule("VIX | Speeds", 5)
+RecTPHideBtn.MouseButton1Click:Connect(function()
+    RecTPHideBtn.Text = RecTPHideBtn.Text == "-" and "+" or "-"
+    for _, child in pairs(RecTPFrame:GetChildren()) do
+        if child ~= RecTPTopBar then
+            child.Visible = RecTPHideBtn.Text == "-"
+        end
+    end
+    RecTPFrame.Size = RecTPHideBtn.Text == "-" and UDim2.new(0, 150, 0, 140) or UDim2.new(0, 150, 0, 30)
+end)
 
+RecTPCloseBtn.MouseButton1Click:Connect(function()
+    RecTPGui.Visible = false
+end)
+
+-- Store for toggle
+local RecTPContentFrame = Instance.new("Frame")
+RecTPContentFrame.Name = "RecTPContent"
+RecTPContentFrame.Size = UDim2.new(1, 0, 0, 40)
+RecTPContentFrame.BackgroundTransparency = 1
+RecTPContentFrame.Visible = moduleStates["VIX | RecTP"]
+RecTPContentFrame.Parent = ModuleToggleFrame
+modulesContainer["VIX | RecTP"] = RecTPContentFrame
+
+local RecTPOpenBtn = Instance.new("TextButton")
+RecTPOpenBtn.Size = UDim2.new(1, -10, 0, 30)
+RecTPOpenBtn.Position = UDim2.new(0, 5, 0, 5)
+RecTPOpenBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+RecTPOpenBtn.Text = "Open RecTP"
+RecTPOpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RecTPOpenBtn.TextScaled = true
+RecTPOpenBtn.Parent = RecTPContentFrame
+addCorner(RecTPOpenBtn)
+RecTPOpenBtn.MouseButton1Click:Connect(function()
+    RecTPGui.Visible = true
+end)
+
+-- ==================== MODULE 5: SPEEDS ====================
+
+local SpeedsToggle = createModuleToggle("VIX | Speeds", 5)
+
+local SpeedsGui = Instance.new("ScreenGui")
+SpeedsGui.Name = "SpeedsGui"
+SpeedsGui.Parent = MainGui
+
+local SpeedsFrame = Instance.new("Frame")
+SpeedsFrame.Size = UDim2.new(0, 70, 0, 60)
+SpeedsFrame.Position = UDim2.new(0.5, -50, 0.5, -25)
+SpeedsFrame.BackgroundColor3 = Color3.fromRGB(45, 0, 0)
+SpeedsFrame.BackgroundTransparency = 0.3
+SpeedsFrame.Active = true
+SpeedsFrame.Parent = SpeedsGui
+addCorner(SpeedsFrame)
+
+local SpeedsTitle = Instance.new("TextLabel")
+SpeedsTitle.Size = UDim2.new(0.8, 0, 0.2, 0)
+SpeedsTitle.Position = UDim2.new(0.1, 0, -0.2, 0)
+SpeedsTitle.BackgroundTransparency = 1
+SpeedsTitle.Text = "VIX | Speeds"
+SpeedsTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedsTitle.TextScaled = true
+SpeedsTitle.Parent = SpeedsFrame
+
+local SpeedsCloseBtn = Instance.new("TextButton")
+SpeedsCloseBtn.Size = UDim2.new(0.2, 0, 0.2, 0)
+SpeedsCloseBtn.Position = UDim2.new(0.8, 0, 0)
+SpeedsCloseBtn.BackgroundColor3 = Color3.fromRGB(55, 0, 0)
+SpeedsCloseBtn.Text = "X"
+SpeedsCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedsCloseBtn.TextWrapped = true
+SpeedsCloseBtn.TextSize = 7
+SpeedsCloseBtn.Parent = SpeedsFrame
+addCorner(SpeedsCloseBtn)
+
+local SpeedsInput = Instance.new("TextBox")
+SpeedsInput.Size = UDim2.new(0.8, 0, 0.2, 0)
+SpeedsInput.Position = UDim2.new(0.1, 0, 0.3)
+SpeedsInput.BackgroundColor3 = Color3.fromRGB(75, 0, 0)
+SpeedsInput.BackgroundTransparency = 0.3
+SpeedsInput.Text = "25"
+SpeedsInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedsInput.TextWrapped = true
+SpeedsInput.TextSize = 7
+SpeedsInput.Parent = SpeedsFrame
+addCorner(SpeedsInput)
+
+local SpeedsBtn = Instance.new("TextButton")
+SpeedsBtn.Size = UDim2.new(0.8, 0, 0.3, 0)
+SpeedsBtn.Position = UDim2.new(0.1, 0, 0.6)
+SpeedsBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 0)
+SpeedsBtn.BackgroundTransparency = 0.3
+SpeedsBtn.Text = "Set Speed"
+SpeedsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedsBtn.TextWrapped = true
+SpeedsBtn.TextSize = 7
+SpeedsBtn.Parent = SpeedsFrame
+addCorner(SpeedsBtn)
+
+local SpeedsLabel = Instance.new("TextLabel")
+SpeedsLabel.Size = UDim2.new(0.8, 0, 0.2, 0)
+SpeedsLabel.Position = UDim2.new(0.1, 0, 0.1)
+SpeedsLabel.BackgroundColor3 = Color3.fromRGB(45, 0, 0)
+SpeedsLabel.BackgroundTransparency = 0.3
+SpeedsLabel.Text = "Now: 16"
+SpeedsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedsLabel.TextSize = 7
+SpeedsLabel.Parent = SpeedsFrame
+addCorner(SpeedsLabel)
+
+-- Speeds logic
 local initialSpeed = 16
 local initialJumpPower = 50
 local currentSpeed = initialSpeed
@@ -953,71 +1170,32 @@ local targetSpeed = initialSpeed
 local targetJumpPower = initialJumpPower
 local isCustomSpeed = false
 
-local SpeedStatus = Instance.new("TextLabel")
-SpeedStatus.Size = UDim2.new(1, -10, 0, 20)
-SpeedStatus.BackgroundTransparency = 1
-SpeedStatus.Text = "Speed: " .. initialSpeed
-SpeedStatus.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedStatus.TextScaled = true
-SpeedStatus.Parent = SpeedsContent
+SpeedsBtn.MouseButton1Click:Connect(function()
+    local speedValue = tonumber(SpeedsInput.Text)
+    if speedValue and speedValue < initialSpeed then
+        SpeedsInput.Text = "25"
+        speedValue = 25
+    end
 
-local SpeedInput = Instance.new("TextBox")
-SpeedInput.Size = UDim2.new(1, -10, 0, 30)
-SpeedInput.Position = UDim2.new(0, 5, 0, 25)
-SpeedInput.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-SpeedInput.BackgroundTransparency = 0.3
-SpeedInput.Text = "25"
-SpeedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedInput.TextScaled = true
-SpeedInput.Parent = SpeedsContent
-addUICorner(SpeedInput)
-
-local SpeedBtn = Instance.new("TextButton")
-SpeedBtn.Size = UDim2.new(1, -10, 0, 30)
-SpeedBtn.Position = UDim2.new(0, 5, 0, 60)
-SpeedBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-SpeedBtn.BackgroundTransparency = 0.3
-SpeedBtn.Text = "Set Speed"
-SpeedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedBtn.TextScaled = true
-SpeedBtn.Parent = SpeedsContent
-addUICorner(SpeedBtn)
-
-local ResetSpeedBtn = Instance.new("TextButton")
-ResetSpeedBtn.Size = UDim2.new(1, -10, 0, 25)
-ResetSpeedBtn.Position = UDim2.new(0, 5, 0, 95)
-ResetSpeedBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 0)
-ResetSpeedBtn.BackgroundTransparency = 0.3
-ResetSpeedBtn.Text = "Reset"
-ResetSpeedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ResetSpeedBtn.TextScaled = true
-ResetSpeedBtn.Parent = SpeedsContent
-addUICorner(ResetSpeedBtn)
-
-SpeedBtn.MouseButton1Click:Connect(function()
-    local speedValue = tonumber(SpeedInput.Text) or 25
-    if speedValue < initialSpeed then speedValue = 25 end
-    
     if isCustomSpeed then
         targetSpeed = initialSpeed
         targetJumpPower = initialJumpPower
         isCustomSpeed = false
-        SpeedBtn.Text = "Set Speed"
+        SpeedsBtn.Text = "Set Speed"
     else
-        savedSpeed = currentSpeed
-        savedJumpPower = currentJumpPower
-        targetSpeed = speedValue
-        targetJumpPower = initialJumpPower + speedValue / 1.5
-        isCustomSpeed = true
-        SpeedBtn.Text = "Reset"
+        if speedValue and speedValue > 0 then
+            savedSpeed = currentSpeed
+            savedJumpPower = currentJumpPower
+            targetSpeed = speedValue
+            targetJumpPower = initialJumpPower + speedValue / 1.5
+            isCustomSpeed = true
+            SpeedsBtn.Text = "Reset"
+        end
     end
 end)
 
-ResetSpeedBtn.MouseButton1Click:Connect(function()
-    targetSpeed = initialSpeed
-    targetJumpPower = initialJumpPower
-    isCustomSpeed = false
-    SpeedBtn.Text = "Set Speed"
+SpeedsCloseBtn.MouseButton1Click:Connect(function()
+    SpeedsGui.Visible = false
 end)
 
 spawn(function()
@@ -1028,68 +1206,112 @@ spawn(function()
             humanoid.JumpPower = isCustomSpeed and targetJumpPower or savedJumpPower
             currentSpeed = humanoid.WalkSpeed
             currentJumpPower = humanoid.JumpPower
-            SpeedStatus.Text = "Speed: " .. math.floor(humanoid.WalkSpeed)
+            SpeedsLabel.Text = "Now: " .. math.floor(humanoid.WalkSpeed)
         end
     end
 end)
 
--- ============== TPSAVE MODULE ==============
+-- Store for toggle
+local SpeedsContentFrame = Instance.new("Frame")
+SpeedsContentFrame.Name = "SpeedsContent"
+SpeedsContentFrame.Size = UDim2.new(1, 0, 0, 40)
+SpeedsContentFrame.BackgroundTransparency = 1
+SpeedsContentFrame.Visible = moduleStates["VIX | Speeds"]
+SpeedsContentFrame.Parent = ModuleToggleFrame
+modulesContainer["VIX | Speeds"] = SpeedsContentFrame
 
-local TPSaveContent = createModule("VIX | TPSave", 6)
+local SpeedsOpenBtn = Instance.new("TextButton")
+SpeedsOpenBtn.Size = UDim2.new(1, -10, 0, 30)
+SpeedsOpenBtn.Position = UDim2.new(0, 5, 0, 5)
+SpeedsOpenBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+SpeedsOpenBtn.Text = "Open Speeds"
+SpeedsOpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedsOpenBtn.TextScaled = true
+SpeedsOpenBtn.Parent = SpeedsContentFrame
+addCorner(SpeedsOpenBtn)
+SpeedsOpenBtn.MouseButton1Click:Connect(function()
+    SpeedsGui.Visible = true
+end)
 
-local savedPosition = nil
-local autoTeleportEnabled = false
+-- ==================== MODULE 6: TPSAVE ====================
 
-local TPSaveStatus = Instance.new("TextLabel")
-TPSaveStatus.Size = UDim2.new(1, -10, 0, 20)
-TPSaveStatus.BackgroundTransparency = 1
-TPSaveStatus.Text = "Save & Teleport Position"
-TPSaveStatus.TextColor3 = Color3.fromRGB(255, 255, 255)
-TPSaveStatus.TextScaled = true
-TPSaveStatus.Parent = TPSaveContent
+local TPSaveToggle = createModuleToggle("VIX | TPSave", 6)
 
-local TPSaveRow = Instance.new("Frame")
-TPSaveRow.Size = UDim2.new(1, -10, 0, 30)
-TPSaveRow.BackgroundTransparency = 1
-TPSaveRow.Parent = TPSaveContent
+local TPSaveGui = Instance.new("ScreenGui")
+TPSaveGui.Name = "TPSaveGui"
+TPSaveGui.Parent = MainGui
+
+local TPSaveFrame = Instance.new("Frame")
+TPSaveFrame.Size = UDim2.new(0, 70, 0, 50)
+TPSaveFrame.Position = UDim2.new(0.5, -50, 0.5, -25)
+TPSaveFrame.BackgroundColor3 = Color3.fromRGB(145, 0, 0)
+TPSaveFrame.BackgroundTransparency = 0.3
+TPSaveFrame.Active = true
+TPSaveFrame.Parent = TPSaveGui
+addCorner(TPSaveFrame)
+
+local TPSaveTitle = Instance.new("TextLabel")
+TPSaveTitle.Size = UDim2.new(1, 0, -0.2, 0)
+TPSaveTitle.Position = UDim2.new(0, 0, -0.05, 0)
+TPSaveTitle.BackgroundTransparency = 1
+TPSaveTitle.Text = "VIX | TpSave"
+TPSaveTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+TPSaveTitle.TextScaled = true
+TPSaveTitle.Parent = TPSaveFrame
+
+local TPSaveCloseBtn = Instance.new("TextButton")
+TPSaveCloseBtn.Size = UDim2.new(0.2, 0, 0.2, 0)
+TPSaveCloseBtn.Position = UDim2.new(0.8, 0, 0)
+TPSaveCloseBtn.BackgroundColor3 = Color3.fromRGB(155, 0, 0)
+TPSaveCloseBtn.Text = "X"
+TPSaveCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TPSaveCloseBtn.TextWrapped = true
+TPSaveCloseBtn.Parent = TPSaveFrame
+addCorner(TPSaveCloseBtn)
 
 local TPSaveBtn = Instance.new("TextButton")
-TPSaveBtn.Size = UDim2.new(0.45, -3, 1, 0)
-TPSaveBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+TPSaveBtn.Size = UDim2.new(0.8, 0, 0.4, 0)
+TPSaveBtn.Position = UDim2.new(0.1, 0, 0)
+TPSaveBtn.BackgroundColor3 = Color3.fromRGB(175, 0, 0)
 TPSaveBtn.BackgroundTransparency = 0.3
 TPSaveBtn.Text = "Save"
 TPSaveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TPSaveBtn.TextWrapped = true
 TPSaveBtn.TextScaled = true
-TPSaveBtn.Parent = TPSaveRow
-addUICorner(TPSaveBtn)
+TPSaveBtn.Parent = TPSaveFrame
+addCorner(TPSaveBtn)
 
 local TPTeleportBtn = Instance.new("TextButton")
-TPTeleportBtn.Size = UDim2.new(0.45, -3, 1, 0)
-TPTeleportBtn.Position = UDim2.new(0.5, 0, 0, 0)
-TPTeleportBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+TPTeleportBtn.Size = UDim2.new(0.8, 0, 0.35, 0)
+TPTeleportBtn.Position = UDim2.new(0.1, 0, 0.51, 0)
+TPTeleportBtn.BackgroundColor3 = Color3.fromRGB(175, 0, 0)
 TPTeleportBtn.BackgroundTransparency = 0.3
 TPTeleportBtn.Text = "Teleport"
 TPTeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TPTeleportBtn.TextWrapped = true
 TPTeleportBtn.TextScaled = true
-TPTeleportBtn.Parent = TPSaveRow
-addUICorner(TPTeleportBtn)
+TPTeleportBtn.Parent = TPSaveFrame
+addCorner(TPTeleportBtn)
 
 local TPAutoBtn = Instance.new("TextButton")
-TPAutoBtn.Size = UDim2.new(1, -10, 0, 30)
-TPAutoBtn.Position = UDim2.new(0, 5, 0, 35)
+TPAutoBtn.Size = UDim2.new(0.2, 0, 0.2, 0)
+TPAutoBtn.Position = UDim2.new(0.8, 0, 0.51, 0)
 TPAutoBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 0)
 TPAutoBtn.BackgroundTransparency = 0.3
-TPAutoBtn.Text = "Auto: OFF"
+TPAutoBtn.Text = "A"
 TPAutoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 TPAutoBtn.TextScaled = true
-TPAutoBtn.Parent = TPSaveContent
-addUICorner(TPAutoBtn)
+TPAutoBtn.Parent = TPSaveFrame
+addCorner(TPAutoBtn)
+
+-- TPSave logic
+local savedPosition = nil
+local autoTPEnabled = false
 
 TPSaveBtn.MouseButton1Click:Connect(function()
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
         savedPosition = hrp.Position
-        TPSaveStatus.Text = "Position Saved!"
     end
 end)
 
@@ -1100,206 +1322,222 @@ TPTeleportBtn.MouseButton1Click:Connect(function()
 end)
 
 TPAutoBtn.MouseButton1Click:Connect(function()
-    autoTeleportEnabled = not autoTeleportEnabled
-    TPAutoBtn.Text = "Auto: " .. (autoTeleportEnabled and "ON" or "OFF")
-    TPAutoBtn.BackgroundColor3 = autoTeleportEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(80, 80, 0)
+    autoTPEnabled = not autoTPEnabled
+    TPAutoBtn.BackgroundColor3 = autoTPEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(80, 80, 0)
+end)
+
+TPSaveCloseBtn.MouseButton1Click:Connect(function()
+    TPSaveGui.Visible = false
 end)
 
 spawn(function()
     while wait(1) do
-        if autoTeleportEnabled and savedPosition and player.Character then
+        if autoTPEnabled and savedPosition and player.Character then
             player.Character:SetPrimaryPartCFrame(CFrame.new(savedPosition))
         end
     end
 end)
 
--- ============== UTILS MODULE ==============
+-- Store for toggle
+local TPSaveContentFrame = Instance.new("Frame")
+TPSaveContentFrame.Name = "TPSaveContent"
+TPSaveContentFrame.Size = UDim2.new(1, 0, 0, 40)
+TPSaveContentFrame.BackgroundTransparency = 1
+TPSaveContentFrame.Visible = moduleStates["VIX | TPSave"]
+TPSaveContentFrame.Parent = ModuleToggleFrame
+modulesContainer["VIX | TPSave"] = TPSaveContentFrame
 
-local UtilsContent = createModule("VIX | Utils", 7)
+local TPSaveOpenBtn = Instance.new("TextButton")
+TPSaveOpenBtn.Size = UDim2.new(1, -10, 0, 30)
+TPSaveOpenBtn.Position = UDim2.new(0, 5, 0, 5)
+TPSaveOpenBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+TPSaveOpenBtn.Text = "Open TPSave"
+TPSaveOpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TPSaveOpenBtn.TextScaled = true
+TPSaveOpenBtn.Parent = TPSaveContentFrame
+addCorner(TPSaveOpenBtn)
+TPSaveOpenBtn.MouseButton1Click:Connect(function()
+    TPSaveGui.Visible = true
+end)
+
+-- ==================== MODULE 7: UTILS ====================
+
+local UtilsToggle = createModuleToggle("VIX | Utils", 7)
+
+local UtilsGui = Instance.new("ScreenGui")
+UtilsGui.Name = "UtilsGui"
+UtilsGui.Parent = MainGui
+
+local UtilsFrame = Instance.new("Frame")
+UtilsFrame.Size = UDim2.new(0, 125, 0, 30)
+UtilsFrame.Position = UDim2.new(0, 5, 0, 5)
+UtilsFrame.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+UtilsFrame.BackgroundTransparency = 0.3
+UtilsFrame.Active = true
+UtilsFrame.Parent = UtilsGui
+addCorner(UtilsFrame)
+
+local UtilsTopBar = Instance.new("Frame")
+UtilsTopBar.Size = UDim2.new(1, 0, 0, 30)
+UtilsTopBar.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
+UtilsTopBar.BackgroundTransparency = 0.3
+UtilsTopBar.Parent = UtilsFrame
+addCorner(UtilsTopBar)
+
+local UtilsTitle = Instance.new("TextLabel")
+UtilsTitle.Size = UDim2.new(1, -75, 1, 0)
+UtilsTitle.Position = UDim2.new(0, 10, 0, 0)
+UtilsTitle.BackgroundTransparency = 1
+UtilsTitle.Text = "VIX | Utils"
+UtilsTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+UtilsTitle.TextSize = 9
+UtilsTitle.Parent = UtilsTopBar
+
+local UtilsCloseBtn = Instance.new("TextButton")
+UtilsCloseBtn.Size = UDim2.new(0, 25, 0, 25)
+UtilsCloseBtn.Position = UDim2.new(1, -30, 0, 2.5)
+UtilsCloseBtn.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
+UtilsCloseBtn.Text = "X"
+UtilsCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+UtilsCloseBtn.Parent = UtilsTopBar
+addCorner(UtilsCloseBtn)
+
+local UtilsMoreBtn = Instance.new("TextButton")
+UtilsMoreBtn.Size = UDim2.new(0, 25, 0, 25)
+UtilsMoreBtn.Position = UDim2.new(1, -60, 0, 2.5)
+UtilsMoreBtn.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
+UtilsMoreBtn.Text = "▼"
+UtilsMoreBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+UtilsMoreBtn.Parent = UtilsTopBar
+addCorner(UtilsMoreBtn)
+
+-- Utils expanded content
+local UtilsExpanded = Instance.new("Frame")
+UtilsExpanded.Size = UDim2.new(0, 190, 0, 150)
+UtilsExpanded.Position = UDim2.new(0, 0, 0, 30)
+UtilsExpanded.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+UtilsExpanded.BackgroundTransparency = 0.3
+UtilsExpanded.Visible = false
+UtilsExpanded.Parent = UtilsFrame
+addCorner(UtilsExpanded)
+
+local function createUtilsBtn(text, pos, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 30, 0, 30)
+    btn.Position = pos
+    btn.BackgroundColor3 = Color3.fromRGB(70, 0, 0)
+    btn.BackgroundTransparency = 0.3
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextScaled = true
+    btn.Parent = UtilsExpanded
+    addCorner(btn)
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
 
 -- FullBright & DarkMode
-local originalAmbient = Lighting.Ambient
-local originalOutdoorAmbient = Lighting.OutdoorAmbient
-local originalBrightness = Lighting.Brightness
-local originalFogEnd = Lighting.FogEnd
-local originalFogColor = Lighting.FogColor
-
-local fullbrightEnabled = false
-local darkmodeEnabled = false
-local fullbrightLoop = nil
-local darkmodeLoop = nil
-
-local UtilsStatus = Instance.new("TextLabel")
-UtilsStatus.Size = UDim2.new(1, -10, 0, 20)
-UtilsStatus.BackgroundTransparency = 1
-UtilsStatus.Text = "Various Utilities"
-UtilsStatus.TextColor3 = Color3.fromRGB(255, 255, 255)
-UtilsStatus.TextScaled = true
-UtilsStatus.Parent = UtilsContent
-
-local UtilsRow1 = Instance.new("Frame")
-UtilsRow1.Size = UDim2.new(1, -10, 0, 30)
-UtilsRow1.BackgroundTransparency = 1
-UtilsRow1.Parent = UtilsContent
-
-local FullBrightBtn = Instance.new("TextButton")
-FullBrightBtn.Size = UDim2.new(0.45, -3, 1, 0)
-FullBrightBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 0)
-FullBrightBtn.BackgroundTransparency = 0.3
-FullBrightBtn.Text = "FullBright"
-FullBrightBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FullBrightBtn.TextScaled = true
-FullBrightBtn.Parent = UtilsRow1
-addUICorner(FullBrightBtn)
-
-local DarkModeBtn = Instance.new("TextButton")
-DarkModeBtn.Size = UDim2.new(0.45, -3, 1, 0)
-DarkModeBtn.Position = UDim2.new(0.5, 0, 0, 0)
-DarkModeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-DarkModeBtn.BackgroundTransparency = 0.3
-DarkModeBtn.Text = "DarkMode"
-DarkModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-DarkModeBtn.TextScaled = true
-DarkModeBtn.Parent = UtilsRow1
-addUICorner(DarkModeBtn)
-
-FullBrightBtn.MouseButton1Click:Connect(function()
+createUtilsBtn("💡", UDim2.new(0, 5, 0, 5), function()
     fullbrightEnabled = not fullbrightEnabled
     if fullbrightEnabled then
-        if darkmodeEnabled then
-            darkmodeEnabled = false
-            if darkmodeLoop then darkmodeLoop:Disconnect() end
-        end
         Lighting.Ambient = Color3.new(1, 1, 1)
         Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
         Lighting.Brightness = 2
         Lighting.FogEnd = 100000
         Lighting.ClockTime = 12
-        FullBrightBtn.BackgroundColor3 = Color3.fromRGB(150, 150, 0)
     else
         Lighting.Ambient = originalAmbient
         Lighting.OutdoorAmbient = originalOutdoorAmbient
         Lighting.Brightness = originalBrightness
-        FullBrightBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 0)
     end
 end)
 
-DarkModeBtn.MouseButton1Click:Connect(function()
+createUtilsBtn("🧥", UDim2.new(0, 40, 0, 5), function()
     darkmodeEnabled = not darkmodeEnabled
     if darkmodeEnabled then
-        if fullbrightEnabled then
-            fullbrightEnabled = false
-            if fullbrightLoop then fullbrightLoop:Disconnect() end
-        end
         Lighting.Ambient = Color3.new(0, 0, 0)
         Lighting.OutdoorAmbient = Color3.new(0, 0, 0)
         Lighting.Brightness = 0
         Lighting.FogEnd = 10
         Lighting.FogColor = Color3.new(0, 0, 0)
-        DarkModeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
     else
         Lighting.Ambient = originalAmbient
         Lighting.OutdoorAmbient = originalOutdoorAmbient
         Lighting.Brightness = originalBrightness
         Lighting.FogEnd = originalFogEnd
         Lighting.FogColor = originalFogColor
-        DarkModeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
     end
 end)
 
--- Gravity Controls
-local UtilsRow2 = Instance.new("Frame")
-UtilsRow2.Size = UDim2.new(1, -10, 0, 30)
-UtilsRow2.BackgroundTransparency = 1
-UtilsRow2.Parent = UtilsContent
+-- Gravity
+local GravDisplay = Instance.new("TextLabel")
+GravDisplay.Size = UDim2.new(0, 80, 0, 25)
+GravDisplay.Position = UDim2.new(0, 75, 0, 5)
+GravDisplay.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
+GravDisplay.BackgroundTransparency = 0.3
+GravDisplay.Text = "Grav: " .. math.floor(workspace.Gravity)
+GravDisplay.TextColor3 = Color3.fromRGB(255, 255, 255)
+GravDisplay.TextScaled = true
+GravDisplay.Parent = UtilsExpanded
+addCorner(GravDisplay)
 
-local GravityLabel = Instance.new("TextLabel")
-GravityLabel.Size = UDim2.new(1, -10, 1, 0)
-GravityLabel.BackgroundTransparency = 1
-GravityLabel.Text = "Gravity: " .. math.floor(workspace.Gravity)
-GravityLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-GravityLabel.TextScaled = true
-GravityLabel.Parent = UtilsRow2
-
-local UtilsRow3 = Instance.new("Frame")
-UtilsRow3.Size = UDim2.new(1, -10, 0, 30)
-UtilsRow3.BackgroundTransparency = 1
-UtilsRow3.Parent = UtilsContent
-
-local GravMinus = Instance.new("TextButton")
-GravMinus.Size = UDim2.new(0.3, -2, 1, 0)
-GravMinus.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-GravMinus.BackgroundTransparency = 0.3
-GravMinus.Text = "-10"
-GravMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
-GravMinus.TextScaled = true
-GravMinus.Parent = UtilsRow3
-addUICorner(GravMinus)
-
-local GravReset = Instance.new("TextButton")
-GravReset.Size = UDim2.new(0.3, -2, 1, 0)
-GravReset.Position = UDim2.new(0.35, 0, 0, 0)
-GravReset.BackgroundColor3 = Color3.fromRGB(100, 100, 0)
-GravReset.BackgroundTransparency = 0.3
-GravReset.Text = "Reset"
-GravReset.TextColor3 = Color3.fromRGB(255, 255, 255)
-GravReset.TextScaled = true
-GravReset.Parent = UtilsRow3
-addUICorner(GravReset)
-
-local GravPlus = Instance.new("TextButton")
-GravPlus.Size = UDim2.new(0.3, -2, 1, 0)
-GravPlus.Position = UDim2.new(0.7, 0, 0, 0)
-GravPlus.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-GravPlus.BackgroundTransparency = 0.3
-GravPlus.Text = "+10"
-GravPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
-GravPlus.TextScaled = true
-GravPlus.Parent = UtilsRow3
-addUICorner(GravPlus)
-
-GravMinus.MouseButton1Click:Connect(function()
+createUtilsBtn("-", UDim2.new(0, 5, 0, 40), function()
     workspace.Gravity = math.max(0, workspace.Gravity - 10)
-    GravityLabel.Text = "Gravity: " .. math.floor(workspace.Gravity)
+    GravDisplay.Text = "Grav: " .. math.floor(workspace.Gravity)
 end)
 
-GravReset.MouseButton1Click:Connect(function()
+createUtilsBtn("R", UDim2.new(0, 40, 0, 40), function()
     workspace.Gravity = 196.2
-    GravityLabel.Text = "Gravity: 196.2"
+    GravDisplay.Text = "Grav: 196.2"
 end)
 
-GravPlus.MouseButton1Click:Connect(function()
+createUtilsBtn("+", UDim2.new(0, 75, 0, 40), function()
     workspace.Gravity = workspace.Gravity + 10
-    GravityLabel.Text = "Gravity: " .. math.floor(workspace.Gravity)
+    GravDisplay.Text = "Grav: " .. math.floor(workspace.Gravity)
 end)
 
 -- X-Ray
-local XRayRow = Instance.new("Frame")
-XRayRow.Size = UDim2.new(1, -10, 0, 30)
-XRayRow.BackgroundTransparency = 1
-XRayRow.Parent = UtilsContent
+createUtilsBtn("X", UDim2.new(0, 5, 0, 75), function()
+    xRayEnabled = not xRayEnabled
+    if xRayEnabled then
+        updateXRayObjects()
+        for part, _ in pairs(xRayObjects) do
+            if part and part.Parent then
+                part.Transparency = 0.7
+            end
+        end
+    else
+        for part, trans in pairs(xRayObjects) do
+            if part and part.Parent then
+                part.Transparency = trans
+            end
+        end
+    end
+end)
 
-local XRayBtn = Instance.new("TextButton")
-XRayBtn.Size = UDim2.new(0.45, -3, 1, 0)
-XRayBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-XRayBtn.BackgroundTransparency = 0.3
-XRayBtn.Text = "X-Ray"
-XRayBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-XRayBtn.TextScaled = true
-XRayBtn.Parent = XRayRow
-addUICorner(XRayBtn)
+createUtilsBtn("R", UDim2.new(0, 40, 0, 75), function()
+    for part, trans in pairs(xRayObjects) do
+        if part and part.Parent then
+            part.Transparency = trans
+        end
+    end
+    xRayEnabled = false
+end)
 
-local XRayResetBtn = Instance.new("TextButton")
-XRayResetBtn.Size = UDim2.new(0.45, -3, 1, 0)
-XRayResetBtn.Position = UDim2.new(0.5, 0, 0, 0)
-XRayResetBtn.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-XRayResetBtn.BackgroundTransparency = 0.3
-XRayResetBtn.Text = "Reset"
-XRayResetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-XRayResetBtn.TextScaled = true
-XRayResetBtn.Parent = XRayRow
-addUICorner(XRayResetBtn)
+createUtilsBtn("↑", UDim2.new(0, 75, 0, 75), UDim2.new(0, 50, 0, 30), function()
+    if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+        player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
 
+-- Utils logic
+local originalAmbient = Lighting.Ambient
+local originalOutdoorAmbient = Lighting.OutdoorAmbient
+local originalBrightness = Lighting.Brightness
+local originalFogEnd = Lighting.FogEnd
+local originalFogColor = Lighting.FogColor
+local fullbrightEnabled = false
+local darkmodeEnabled = false
 local xRayEnabled = false
 local xRayObjects = {}
 
@@ -1312,39 +1550,40 @@ local function updateXRayObjects()
     end
 end
 
-XRayBtn.MouseButton1Click:Connect(function()
-    xRayEnabled = not xRayEnabled
-    if xRayEnabled then
-        updateXRayObjects()
-        for part, trans in pairs(xRayObjects) do
-            if part and part.Parent then
-                part.Transparency = 0.7
-            end
-        end
-        XRayBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    else
-        for part, trans in pairs(xRayObjects) do
-            if part and part.Parent then
-                part.Transparency = trans
-            end
-        end
-        XRayBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    end
+UtilsMoreBtn.MouseButton1Click:Connect(function()
+    UtilsMoreBtn.Text = UtilsMoreBtn.Text == "▼" and "▲" or "▼"
+    UtilsExpanded.Visible = UtilsMoreBtn.Text == "▲"
+    UtilsFrame.Size = UtilsMoreBtn.Text == "▲" and UDim2.new(0, 190, 0, 183) or UDim2.new(0, 125, 0, 30)
 end)
 
-XRayResetBtn.MouseButton1Click:Connect(function()
-    for part, trans in pairs(xRayObjects) do
-        if part and part.Parent then
-            part.Transparency = trans
-        end
-    end
-    xRayEnabled = false
-    XRayBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+UtilsCloseBtn.MouseButton1Click:Connect(function()
+    UtilsGui.Visible = false
 end)
 
--- ============== INITIALIZATION ==============
+-- Store for toggle
+local UtilsContentFrame = Instance.new("Frame")
+UtilsContentFrame.Name = "UtilsContent"
+UtilsContentFrame.Size = UDim2.new(1, 0, 0, 40)
+UtilsContentFrame.BackgroundTransparency = 1
+UtilsContentFrame.Visible = moduleStates["VIX | Utils"]
+UtilsContentFrame.Parent = ModuleToggleFrame
+modulesContainer["VIX | Utils"] = UtilsContentFrame
 
--- Start with modules visible
-AllModulesFrame.Size = UDim2.new(0, 200, 0, 500)
+local UtilsOpenBtn = Instance.new("TextButton")
+UtilsOpenBtn.Size = UDim2.new(1, -10, 0, 30)
+UtilsOpenBtn.Position = UDim2.new(0, 5, 0, 5)
+UtilsOpenBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+UtilsOpenBtn.Text = "Open Utils"
+UtilsOpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+UtilsOpenBtn.TextScaled = true
+UtilsOpenBtn.Parent = UtilsContentFrame
+addCorner(UtilsOpenBtn)
+UtilsOpenBtn.MouseButton1Click:Connect(function()
+    UtilsGui.Visible = true
+end)
+
+-- ==================== INIT ====================
+
+Container.Size = UDim2.new(0, 200, 0, 500)
 
 print("VIX Modules Loaded!")
