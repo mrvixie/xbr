@@ -190,11 +190,6 @@ Follow.MouseButton1Click:Connect(function()
     end
 end)
 
-MCMode.MouseButton1Click:Connect(function()
-    mcBuildEnabled = not mcBuildEnabled
-    MCMode.BackgroundColor3 = mcBuildEnabled and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(40, 40, 40)
-end)
-
 Clear.MouseButton1Click:Connect(function()
     for _, v in pairs(createdObjects) do v:Destroy() end
     createdObjects = {}
