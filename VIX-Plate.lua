@@ -139,17 +139,6 @@ layout.VerticalAlignment = Enum.VerticalAlignment.Center
 layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 layout.Parent = ButtonsArea
 
--- Текст VIX Fort
-local BrandLabel = Instance.new("TextLabel")
-BrandLabel.Text = "VIX Fort"
-BrandLabel.Size = UDim2.new(1, 0, 0, 14)
-BrandLabel.Position = UDim2.new(0, 0, 1, -30)
-BrandLabel.BackgroundTransparency = 1
-BrandLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-BrandLabel.Font = Enum.Font.GothamBold
-BrandLabel.TextSize = 38
-BrandLabel.Parent = Content
-
 -- Правая панель управления
 local SideBar = Instance.new("Frame")
 SideBar.Size = UDim2.new(0, SIDE_WIDTH, 1, 0)
@@ -171,6 +160,17 @@ local function createBtn(text, parent, size)
     applyGlass(b)
     return b
 end
+
+-- Текст VIX Fort
+local BrandLabel = Instance.new("TextLabel")
+BrandLabel.Text = "VIX Fort"
+BrandLabel.Size = UDim2.new(1, 0, 0, 14)
+BrandLabel.Position = UDim2.new(0, 0, 1, -30)
+BrandLabel.BackgroundTransparency = 0.2
+BrandLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+BrandLabel.Font = Enum.Font.GothamBold
+BrandLabel.TextSize = 38
+BrandLabel.Parent = Content
 
 local CloseBtn = createBtn("X", SideBar, UDim2.new(0, 20, 0, 20))
 CloseBtn.Position = UDim2.new(0.5, -10, 0.15, 0)
