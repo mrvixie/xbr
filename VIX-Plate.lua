@@ -199,11 +199,11 @@ end)
 HideBtn.MouseButton1Click:Connect(function()
     isHidden = not isHidden
     if isHidden then
-        MainFrame:TweenSize(UDim2.new(0, 60, 0, 70), "Out", "Quad", 0.3, true)
+        MainFrame:TweenSize(UDim2.new(0, 50, 0, 70), "Out", "Quad", 0.3, true)
         ButtonGrid.Visible = false
         HideBtn.Text = ">"
     else
-        MainFrame:TweenSize(UDim2.new(0, 400, 0, 70), "Out", "Quad", 0.3, true)
+        MainFrame:TweenSize(UDim2.new(0, 370, 0, 70), "Out", "Quad", 0.3, true)
         task.delay(0.2, function() ButtonGrid.Visible = true end)
         HideBtn.Text = "<"
     end
